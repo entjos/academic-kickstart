@@ -24,8 +24,8 @@ date_format = "Jan 2006"
   title = "Data Scientist with R Track"
   url = "https://learn.datacamp.com/career-tracks/data-scientist-with-r?version=1"
   certificate_url = "https://www.datacamp.com/statement-of-accomplishment/track/511de7a927edb2a2dc8f2514221e76b3de6395a0"
-  date_start = "2018"
-  date_end = "2019"
+  date_start = "2018-01-01"
+  date_end = "2019-12-31"
   description = "The Data Scientist with R track in Data Camp includes 23 courses focusing on programming, data management, data analysis and data visualisation in R. During these courses I improved my R skills a lot and became more flexible with data management in R."
 
 +++
