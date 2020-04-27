@@ -25,7 +25,7 @@ subtitle = ""
   name = "Survival Analysis"
   
 [[feature]]
-  icon = "camera-retro"
+  icon = "hiking"
   icon_pack = "fas"
   name = "Hiking"
 
