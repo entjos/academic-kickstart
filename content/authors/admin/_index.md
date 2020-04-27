@@ -68,6 +68,4 @@ user_groups:
 - Visitors
 ---
 
-Nelson Bighetti is a professor of artificial intelligence at the Stanford AI Lab. His research interests include distributed robotics, mobile computing and programmable matter. He leads the Robotic Neurobiology group, which develops self-reconfiguring robots, systems of self-organizing robots, and mobile sensor networks.
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed neque elit, tristique placerat feugiat ac, facilisis vitae arcu. Proin eget egestas augue. Praesent ut sem nec arcu pellentesque aliquet. Duis dapibus diam vel metus tempus vulputate.
+Joshua Entrop is a student with passion for health data and statistical analyses. My research interests are not limited to certain diseases or health issues. Instead, I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at rst glance.
