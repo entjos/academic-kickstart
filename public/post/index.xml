@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts | Academic</title>
+    <link>/post/</link>
+      <atom:link href="/post/index.xml" rel="self" type="application/rss+xml" />
+    <description>Posts</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>en-us</language><lastBuildDate>Sun, 26 Apr 2020 00:00:00 +0000</lastBuildDate>
+    <image>
+      <url>/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
+      <title>Posts</title>
+      <link>/post/</link>
+    </image>
+    
+    <item>
+      <title>Optimisation of a Linear Regression Model</title>
+      <link>/post/optim_linear_reg/</link>
+      <pubDate>Sun, 26 Apr 2020 00:00:00 +0000</pubDate>
+      <guid>/post/optim_linear_reg/</guid>
+      <description>
+
+
+&lt;p&gt;In this post I would like to show how to manually optimise a linear regression model using the optim command in R. Usually if you learn how to fit a linear regression model in R, you would learn how to use the lm command to do this. However, if you would like to know how to do this manually, examples are rare.&lt;/p&gt;
+&lt;p&gt;If you want to optimise a function, the most important question of course is which function should be optimised? As it is taught in most statistic classes this function is in case of a linear regression model the distribution of the residuals (R). We know that this distribution follows a normal distriibution with mean 0 and a unknown standart deviation &lt;span class=&#34;math inline&#34;&gt;\(\sigma\)&lt;/span&gt;:&lt;/p&gt;
+&lt;p&gt;&lt;span class=&#34;math display&#34;&gt;\[\sum_{i = 1}^{i = n} R_i \sim N(0, \sigma)\]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Where R equals:&lt;/p&gt;
+&lt;p&gt;&lt;span class=&#34;math display&#34;&gt;\[R_i = y_1 - \hat{y_i}\]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Thus, we are interested in a function for &lt;span class=&#34;math inline&#34;&gt;\(\hat{y_i}\)&lt;/span&gt; which minimises the residuals and hence, gives us the best estimates for the function of interest. Taking all this information together we can write the function we would like to optimise, shown below.&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;#Reading the example data set icu from the package aplore3
+library(aplore3)
+y = icu$sys                 #Set our depended variable
+x1 = icu$age                #Set our fist independed variable
+x2 = as.numeric(icu$gender) #Set our second independed variable
+
+#Define our liklihood function we like to optimise
+ll_lm &amp;lt;- function(par, y, x1, x2){
+  
+  alpha &amp;lt;- par[1]
+  beta1 &amp;lt;- par[2]
+  beta2 &amp;lt;- par[3]
+  sigma &amp;lt;- par[4]
+  
+  R = y - alpha - beta1 * x1 - beta2 * x2
+  
+  -sum(dnorm(R, mean = 0, sigma, log = TRUE))
+}&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;A function that can be used for the &lt;TT&gt; optim &lt;/TT&gt; command needs to have a &lt;TT&gt; par &lt;/TT&gt; argument, which includes the unknown parameters. The &lt;TT&gt; par &lt;/TT&gt; arguments needs a vector with initial values or guesses for all unkown parameters. As shown in the example above the &lt;TT&gt; par &lt;/TT&gt; argument includes initial values for all 4 unknown parameters. In this example the first value of the &lt;TT&gt; par &lt;/TT&gt; arguments equals alpha, the second beta1, the third beta2 and the fourth sigma, which is our unknown standart deviation of the normal distribution of our residuals. Additionally, we included our two independent variables x1 and x2 and our dependened variable y as function arguments in the optim call.&lt;/p&gt;
+&lt;p&gt;Also note, that I used the &lt;TT&gt; log &lt;/TT&gt; argument of the &lt;TT&gt; dnorm &lt;/TT&gt; function to get the logaritmic values of the dnorm function. This is necessary, if we wold like to sum the singel liklihood values instead of taking the product of them.&lt;/p&gt;
+&lt;p&gt;The linear model we would like to fit in this example is:&lt;/p&gt;
+&lt;p&gt;&lt;span class=&#34;math display&#34;&gt;\[ E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2\]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Hence, the residuals for this model can be calculated as:&lt;/p&gt;
+&lt;p&gt;&lt;span class=&#34;math display&#34;&gt;\[R = y - \alpha - \beta_1 x_1 - \beta_2 x_2\]&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;Since we know that these residuals follow a normal distribution with mean 0, we just need to find the standardt deviation for the normal distribution of the residuals and the values for our coefficents, that fits best our data. To do this, we would like to minimise the sum of errors. This is done by the &lt;TT&gt; optim &lt;/TT&gt; command. However, since the &lt;TT&gt; optim &lt;/TT&gt; command always maximises functions, we just need to put a minus before our summation.&lt;/p&gt;
+&lt;p&gt;Before, we run the &lt;TT&gt; optim &lt;/TT&gt; command we also need to find good guesses for our estimates, since the initial parameter values which are chosen for the optimisation influences our estimates. In this case we just calculate the conditional means for our subgroups and use them as guess for our coefficients.&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;est_alpha &amp;lt;- mean(icu$sys)
+est_beta1 &amp;lt;- mean(icu$sys[icu$age &amp;gt;= 40 &amp;amp; icu$age &amp;lt;= 41]) - mean(icu$sys[icu$age &amp;gt;= 41 &amp;amp; icu$age &amp;lt;= 52])
+est_beta2 &amp;lt;- mean(icu$sys[icu$gender == &amp;quot;Male&amp;quot;]) - mean(icu$sys[icu$gender == &amp;quot;Female&amp;quot;])
+est_sigma &amp;lt;- sd(icu$sys)&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Now we can use the optim function to search for our maximmum liklihood estimates (mles) for the different coefficents. For the optim function, we need the function we like to optimise, in this case &lt;TT&gt; ll_lm &lt;/TT&gt;, our guesses for the estimates and the empirical data we want to use for the optimisation.&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;mle_par &amp;lt;- optim(fn = ll_lm,                #Function to be optimised
+                 par = c(alpha = est_alpha, #Initial values
+                         beta1 = est_beta1, 
+                         beta2 = est_beta2, 
+                         sigma = est_sigma), 
+                 y = icu$sys,               #Empirical data from the data set icu
+                 x1 = icu$age,
+                 x2 = as.numeric(icu$gender))
+
+mle_par$par                                 #Showing estimates for unknown parameters&lt;/code&gt;&lt;/pre&gt;
+&lt;pre&gt;&lt;code&gt;##        alpha        beta1        beta2        sigma 
+## 123.99854056   0.06173058   3.37040256  32.77094809&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;If we now compare our estimates with the results of the &lt;TT&gt; lm &lt;/TT&gt; command for the same model, we can see slight differences in the esitmates, which may be due to different optimisation alogrithms or due to our initial guesses for the parameters.&lt;/p&gt;
+&lt;pre class=&#34;r&#34;&gt;&lt;code&gt;summary(lm(sys ~ age + as.numeric(gender), data = icu))&lt;/code&gt;&lt;/pre&gt;
+&lt;pre&gt;&lt;code&gt;## 
+## Call:
+## lm(formula = sys ~ age + as.numeric(gender), data = icu)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -98.544 -20.510  -1.445  18.884 122.272 
+## 
+## Coefficients:
+##                     Estimate Std. Error t value Pr(&amp;gt;|t|)    
+## (Intercept)        124.39209    9.32708  13.337   &amp;lt;2e-16 ***
+## age                  0.06276    0.11738   0.535    0.593    
+## as.numeric(gender)   3.09867    4.83773   0.641    0.523    
+## ---
+## Signif. codes:  0 &amp;#39;***&amp;#39; 0.001 &amp;#39;**&amp;#39; 0.01 &amp;#39;*&amp;#39; 0.05 &amp;#39;.&amp;#39; 0.1 &amp;#39; &amp;#39; 1
+## 
+## Residual standard error: 33.05 on 197 degrees of freedom
+## Multiple R-squared:  0.003889,   Adjusted R-squared:  -0.006224 
+## F-statistic: 0.3845 on 2 and 197 DF,  p-value: 0.6813&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;This approach for a manuell optimisation of a linear regression model can also be adopted for other linear regression model with more coefficents. In this case the formula for the residuals needs to be adjusted to the structure of the model that you like to fit.&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
