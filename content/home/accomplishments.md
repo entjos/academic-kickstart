@@ -17,35 +17,15 @@ date_format = "Jan 2006"
 #   `title`, `organization` and `date_start` are the required parameters.
 #   Leave other parameters empty if not required.
 #   Begin/end multi-line descriptions with 3 quotes `"""`.
-
-[[item]]
-  organization = "Coursera"
-  organization_url = "https://www.coursera.org"
-  title = "Neural Networks and Deep Learning"
-  url = ""
-  certificate_url = "https://www.coursera.org"
-  date_start = "2018-10-01"
-  date_end = ""
-  description = ""
-
-[[item]]
-  organization = "edX"
-  organization_url = "https://www.edx.org"
-  title = "Blockchain Fundamentals"
-  url = "https://www.edx.org/professional-certificate/uc-berkeleyx-blockchain-fundamentals"
-  certificate_url = "https://www.edx.org"
-  date_start = "2018-03-01"
-  date_end = ""
-  description = "Formulated informed blockchain models, hypotheses, and use cases."
   
 [[item]]
   organization = "DataCamp"
   organization_url = "https://www.datacamp.com"
-  title = "Object-Oriented Programming in R: S3 and R6 Course"
-  url = ""
-  certificate_url = "https://www.datacamp.com"
-  date_start = "2017-07-01"
-  date_end = "2017-12-21"
-  description = ""
+  title = "Data Scientist with R Track"
+  url = "https://learn.datacamp.com/career-tracks/data-scientist-with-r?version=1"
+  certificate_url = "https://www.datacamp.com/statement-of-accomplishment/track/511de7a927edb2a2dc8f2514221e76b3de6395a0"
+  date_start = "2018"
+  date_end = "2019"
+  description = "The Data Scientist with R track in Data Camp includes 23 courses focusing on programming, data management, data analysis and data visualisation in R. During these courses I improved my R skills a lot and became more flexible with data management in R."
 
 +++
