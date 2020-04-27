@@ -46,7 +46,7 @@ Also note, that I used the <TT> log </TT> argument of the <TT> dnorm </TT> funct
 
 The linear model we would like to fit in this example is:
 
-$$ E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2$$
+$$E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2$$
 
 Hence, the residuals for this model can be calculated as:
 

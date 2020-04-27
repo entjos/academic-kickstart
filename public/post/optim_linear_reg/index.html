@@ -705,7 +705,7 @@ ll_lm &lt;- function(par, y, x1, x2){
 <p>A function that can be used for the <TT> optim </TT> command needs to have a <TT> par </TT> argument, which includes the unknown parameters. The <TT> par </TT> arguments needs a vector with initial values or guesses for all unkown parameters. As shown in the example above the <TT> par </TT> argument includes initial values for all 4 unknown parameters. In this example the first value of the <TT> par </TT> arguments equals alpha, the second beta1, the third beta2 and the fourth sigma, which is our unknown standart deviation of the normal distribution of our residuals. Additionally, we included our two independent variables x1 and x2 and our dependened variable y as function arguments in the optim call.</p>
 <p>Also note, that I used the <TT> log </TT> argument of the <TT> dnorm </TT> function to get the logaritmic values of the dnorm function. This is necessary, if we wold like to sum the singel liklihood values instead of taking the product of them.</p>
 <p>The linear model we would like to fit in this example is:</p>
-<p><span class="math display">\[ E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2\]</span></p>
+<p><span class="math display">\[E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2\]</span></p>
 <p>Hence, the residuals for this model can be calculated as:</p>
 <p><span class="math display">\[R = y - \alpha - \beta_1 x_1 - \beta_2 x_2\]</span></p>
 <p>Since we know that these residuals follow a normal distribution with mean 0, we just need to find the standardt deviation for the normal distribution of the residuals and the values for our coefficents, that fits best our data. To do this, we would like to minimise the sum of errors. This is done by the <TT> optim </TT> command. However, since the <TT> optim </TT> command always maximises functions, we just need to put a minus before our summation.</p>
@@ -1103,16 +1103,6 @@ mle_par$par                                 #Showing estimates for unknown param
   
   <div class="container">
     <footer class="site-footer">
-  
-  <p class="powered-by">
-    
-      <a href="/privacy/">Privacy Policy</a>
-    
-    
-       &middot; 
-      <a href="/terms/">Terms</a>
-    
-  </p>
   
 
   <p class="powered-by">
