@@ -30,10 +30,10 @@ education:
   courses:
   - course: M.Sc. Public Health Epidemiology
     institution: Karolinska Institutet, Stockholm (Sweden)
-    year: 2018-
+    year: 2018 -
   - course: B.A. Social Science
     institution: Ruhr-University Bochum, Germany
-    year: 2015-2018
+    year: 2015 - 2018
 
 # Social/Academic Networking
 # For available icons, see: https://sourcethemes.com/academic/docs/page-builder/#icons
@@ -68,4 +68,4 @@ user_groups:
 - Visitors
 ---
 
-Joshua Entrop is a student with passion for health data and statistical analyses. My research interests are not limited to certain diseases or health issues. Instead, I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at rst glance.
+I am a student with passion for health data and statistical analyses. My research interests are not limited to certain diseases or health issues. Instead, I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
