@@ -2,24 +2,20 @@
 title: "Optimisation of a Linear Regression Model"
 author: "Joshua Philipp Entrop"
 date: "2020-04-26"
-output:   
-blogdown::html_page:
-    toc: true
-    fig_width: 6
-    dev: "svg"
+output: html_document
 ---
 
 In this post I would like to show how to manually optimise a linear regression model using the optim command in R. Usually if you learn how to fit a linear regression model in R, you would learn how to use the lm command to do this. However, if you would like to know how to do this manually, examples are rare.
 
 If you want to optimise a function, the most important question of course is which function should be optimised? As it is taught in most statistic classes this function is in case of a linear regression model the distribution of the residuals (R). We know that this distribution follows a normal distriibution with mean 0 and a unknown standart deviation $\sigma$:
 
-$$\\sum\\_{i = 1}^{i = n} R\\_i \\sim N(0, \\sigma)$$
+$$\sum_{i = 1}^{i = n} R_i \sim N(0, \sigma)$$
 
 Where R equals:
 
-$$R\\_i = y\\_1 - \hat{y\\_i}$$
+$$ R_i = y_1 - \hat{y_i} $$
 
-Thus, we are interested in a function for $\hat{y\\_i}$ which minimises the residuals and hence, gives us the best estimates for the function of interest. Taking all this information together we can write the function we would like to optimise, shown below.
+Thus, we are interested in a function for $\hat{y_i}$ which minimises the residuals and hence, gives us the best estimates for the function of interest. Taking all this information together we can write the function we would like to optimise, shown below.
 
 ```{r, warning=FALSE}
 
@@ -50,7 +46,7 @@ Also note, that I used the <TT> log </TT> argument of the <TT> dnorm </TT> funct
 
 The linear model we would like to fit in this example is:
 
-$$E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2$$
+$$ E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2$$
 
 Hence, the residuals for this model can be calculated as:
 
@@ -63,11 +59,8 @@ Before, we run the <TT> optim </TT> command we also need to find good guesses fo
 ```{R}
 
 est_alpha <- mean(icu$sys)
-
 est_beta1 <- mean(icu$sys[icu$age >= 40 & icu$age <= 41]) - mean(icu$sys[icu$age >= 41 & icu$age <= 52])
-
 est_beta2 <- mean(icu$sys[icu$gender == "Male"]) - mean(icu$sys[icu$gender == "Female"])
-
 est_sigma <- sd(icu$sys)
 
 ```
