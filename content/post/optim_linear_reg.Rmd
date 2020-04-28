@@ -59,8 +59,11 @@ Before, we run the <TT> optim </TT> command we also need to find good guesses fo
 ```{R}
 
 est_alpha <- mean(icu$sys)
+
 est_beta1 <- mean(icu$sys[icu$age >= 40 & icu$age <= 41]) - mean(icu$sys[icu$age >= 41 & icu$age <= 52])
+
 est_beta2 <- mean(icu$sys[icu$gender == "Male"]) - mean(icu$sys[icu$gender == "Female"])
+
 est_sigma <- sd(icu$sys)
 
 ```
