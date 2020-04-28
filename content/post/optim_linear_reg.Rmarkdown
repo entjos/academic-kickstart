@@ -9,13 +9,13 @@ In this post I would like to show how to manually optimise a linear regression m
 
 If you want to optimise a function, the most important question of course is which function should be optimised? As it is taught in most statistic classes this function is in case of a linear regression model the distribution of the residuals (R). We know that this distribution follows a normal distriibution with mean 0 and a unknown standart deviation $\sigma$:
 
-$$\sum_{i = 1}^{i = n} R_i \sim N(0, \sigma)$$
+$$\\sum\\_{i = 1}^{i = n} R\\_i \\sim N(0, \\sigma)$$
 
 Where R equals:
 
-$$R_i = y_1 - \hat{y_i}$$
+$$R\\_i = y\\_1 - \hat{y\\_i}$$
 
-Thus, we are interested in a function for $\hat{y_i}$ which minimises the residuals and hence, gives us the best estimates for the function of interest. Taking all this information together we can write the function we would like to optimise, shown below.
+Thus, we are interested in a function for $\hat{y\\_i}$ which minimises the residuals and hence, gives us the best estimates for the function of interest. Taking all this information together we can write the function we would like to optimise, shown below.
 
 ```{r, warning=FALSE}
 
