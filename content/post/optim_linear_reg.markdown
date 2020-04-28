@@ -2,7 +2,11 @@
 title: "Optimisation of a Linear Regression Model"
 author: "Joshua Philipp Entrop"
 date: "2020-04-26"
-output: html_document
+output:   
+blogdown::html_page:
+    toc: true
+    fig_width: 6
+    dev: "svg"
 ---
 
 In this post I would like to show how to manually optimise a linear regression model using the optim command in R. Usually if you learn how to fit a linear regression model in R, you would learn how to use the lm command to do this. However, if you would like to know how to do this manually, examples are rare.
