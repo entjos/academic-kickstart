@@ -1,5 +1,5 @@
 ---
-title: "Optimisation of a Linear Regression Model"
+title: "Optimisation of a Linear Regression Model in R"
 author: "Joshua Philipp Entrop"
 date: "2020-04-26"
 categories: [Optimisation]
@@ -9,7 +9,7 @@ output: html_document
 
 In this post I would like to show how to manually optimise a linear regression model using the <TT> optim </TT> command in R. Usually if you learn how to fit a linear regression model in R, you would learn how to use the <TT> lm </TT> command to do this. However, if you would like to know how to do this manually, examples are rare.
 
-If you want to optimise a function, the most important question of course is which function should be optimised? As it is taught in most statistic classes this function is in case of a linear regression model the distribution of the residuals ($R$). We know that this distribution follows a normal distribution with mean 0 and a unknown standart deviation $\sigma$:
+If you want to optimise a function, the most important question of course is which function should be optimised? As it is taught in most statistic classes this function is in case of a linear regression model the distribution of the residuals $(R)$. We know that this distribution follows a normal distribution with mean 0 and a unknown standart deviation $\sigma$:
 
 $$\sum_{i = 1}^{i = n} R_i \sim N(0, \sigma)$$
 
@@ -42,7 +42,7 @@ ll_lm <- function(par, y, x1, x2){
 
 ```
 
-A function that can be used for the <TT> optim </TT> command needs to have a <TT> par </TT> argument, which includes the unknown parameters. The <TT> par </TT> arguments needs a vector with initial values or guesses for all unkown parameters. As shown in the example above the <TT> par </TT> argument includes initial values for all 4 unknown parameters. In this example the first value of the <TT> par </TT> arguments equals $/alpha$, the second $/beta_1$, the third $/beta_2$ and the fourth $/sigma$, which is our unknown standart deviation of the normal distribution of our residuals. Additionally, we included our two independent variables $x_1$ and $x_2$ and our dependened variable y as function arguments in the optim call.
+A function that can be used for the <TT> optim </TT> command needs to have a <TT> par </TT> argument, which includes the unknown parameters. The <TT> par </TT> arguments needs a vector with initial values or guesses for all unkown parameters. As shown in the example above the <TT> par </TT> argument includes initial values for all 4 unknown parameters. In this example the first value of the <TT> par </TT> arguments equals $\alpha$, the second $\beta_1$, the third $\beta_2$ and the fourth $\sigma$, which is our unknown standart deviation of the normal distribution of our residuals. Additionally, we included our two independent variables $x_1$ and $x_2$ and our dependened variable y as function arguments in the optim call.
 
 Also note, that I used the <TT> log </TT> argument of the <TT> dnorm </TT> function to get the logaritmic values of the dnorm function. This is necessary, if we wold like to sum the singel liklihood values instead of taking the product of them.
 
