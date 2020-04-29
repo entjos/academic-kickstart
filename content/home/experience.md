@@ -29,7 +29,7 @@ date_format = "Jan 2006"
 [[experience]]
   title = "Student Teaching Assistant"
   company = "Ruhr University Bochum, Social Policy and Social Economy Section"
-  company_url = ""
+  company_url = "https://www.sowi.rub.de/sektionen/sopooek/index.html.en"
   location = "Bochum, Germany"
   date_start = "2017-04-30"
   date_end = "2018-07-31"
