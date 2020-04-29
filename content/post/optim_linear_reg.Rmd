@@ -2,16 +2,18 @@
 title: "Optimisation of a Linear Regression Model"
 author: "Joshua Philipp Entrop"
 date: "2020-04-26"
+categories: [Optimisation]
+tags: [R, linear regression, manuel optimisation]
 output: html_document
 ---
 
-In this post I would like to show how to manually optimise a linear regression model using the optim command in R. Usually if you learn how to fit a linear regression model in R, you would learn how to use the lm command to do this. However, if you would like to know how to do this manually, examples are rare.
+In this post I would like to show how to manually optimise a linear regression model using the <TT> optim </TT> command in R. Usually if you learn how to fit a linear regression model in R, you would learn how to use the <TT> lm </TT> command to do this. However, if you would like to know how to do this manually, examples are rare.
 
-If you want to optimise a function, the most important question of course is which function should be optimised? As it is taught in most statistic classes this function is in case of a linear regression model the distribution of the residuals (R). We know that this distribution follows a normal distriibution with mean 0 and a unknown standart deviation $\sigma$:
+If you want to optimise a function, the most important question of course is which function should be optimised? As it is taught in most statistic classes this function is in case of a linear regression model the distribution of the residuals ($R$). We know that this distribution follows a normal distribution with mean 0 and a unknown standart deviation $\sigma$:
 
 $$\sum_{i = 1}^{i = n} R_i \sim N(0, \sigma)$$
 
-Where R equals:
+Where $R$ equals:
 
 $$ R_i = y_1 - \hat{y_i} $$
 
@@ -40,19 +42,19 @@ ll_lm <- function(par, y, x1, x2){
 
 ```
 
-A function that can be used for the <TT> optim </TT> command needs to have a <TT> par </TT> argument, which includes the unknown parameters. The <TT> par </TT> arguments needs a vector with initial values or guesses for all unkown parameters. As shown in the example above the <TT> par </TT> argument includes initial values for all 4 unknown parameters. In this example the first value of the <TT> par </TT> arguments equals alpha, the second beta1, the third beta2 and the fourth sigma, which is our unknown standart deviation of the normal distribution of our residuals. Additionally, we included our two independent variables x1 and x2 and our dependened variable y as function arguments in the optim call.
+A function that can be used for the <TT> optim </TT> command needs to have a <TT> par </TT> argument, which includes the unknown parameters. The <TT> par </TT> arguments needs a vector with initial values or guesses for all unkown parameters. As shown in the example above the <TT> par </TT> argument includes initial values for all 4 unknown parameters. In this example the first value of the <TT> par </TT> arguments equals $/alpha$, the second $/beta_1$, the third $/beta_2$ and the fourth $/sigma$, which is our unknown standart deviation of the normal distribution of our residuals. Additionally, we included our two independent variables $x_1$ and $x_2$ and our dependened variable y as function arguments in the optim call.
 
 Also note, that I used the <TT> log </TT> argument of the <TT> dnorm </TT> function to get the logaritmic values of the dnorm function. This is necessary, if we wold like to sum the singel liklihood values instead of taking the product of them.
 
 The linear model we would like to fit in this example is:
 
-$$ E(Y|X) = \alpha + \beta_1  x_1 + \beta_2  x_2$$
+$$ E(Y|\mathbf{X}) = \alpha + \beta_1  x_1 + \beta_2  x_2$$
 
 Hence, the residuals for this model can be calculated as:
 
 $$R = y - \alpha - \beta_1 x_1 - \beta_2 x_2$$
 
-Since we know that these residuals follow a normal distribution with mean 0, we just need to find the standardt deviation for the normal distribution of the residuals and the values for our coefficents, that fits best our data. To do this, we would like to minimise the sum of errors. This is done by the <TT> optim </TT>  command. However, since the <TT> optim </TT> command always maximises functions, we just need to put a minus before our summation.
+Since we know that these residuals follow a normal distribution with mean 0, we just need to find the standard deviation for the normal distribution of the residuals and the values for our coefficents, that fits best our data. To do this, we would like to minimise the sum of errors. This is done by the <TT> optim </TT>  command. However, since the <TT> optim </TT> command always maximises functions, we just need to put a minus before our summation.
 
 Before, we run the <TT> optim </TT> command we also need to find good guesses for our estimates, since the initial parameter values which are chosen for the optimisation influences our estimates. In this case we just calculate the  conditional means for our subgroups and use them as guess for our coefficients.
 
@@ -65,7 +67,7 @@ est_sigma <- sd(icu$sys)
 
 ```
 
-Now we can use the optim function to search for our maximmum liklihood estimates (mles) for the different coefficents. For the optim function, we need the function we like to optimise, in this case <TT> ll_lm </TT>, our guesses for the estimates and the empirical data we want to use for the optimisation.
+Now we can use the <TT> optim </TT> function to search for our maximmum liklihood estimates (mles) for the different coefficents. For the <TT> optim </TT> function, we need the function we like to optimise, in this case <TT> ll_lm </TT>, our guesses for the estimates and the empirical data we want to use for the optimisation.
 
 ```{R}
 mle_par <- optim(fn = ll_lm,                #Function to be optimised
