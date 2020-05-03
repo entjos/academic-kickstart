@@ -27,6 +27,6 @@ subtitle = ""
 [[feature]]
   icon = "hiking"
   icon_pack = "fas"
-  name = "Hiking"
+  name = "Hiking ([komoot](https://www.komoot.com/user/766183757624))"
 
 +++
