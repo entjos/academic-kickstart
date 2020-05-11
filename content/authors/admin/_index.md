@@ -68,4 +68,4 @@ user_groups:
 - Visitors
 ---
 
-I am a student with passion for health data and statistical analyses. My research interests are not limited to certain diseases or health issues. Instead, I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
+I am a student with passion for health data and statistical analyses. My research interests are within applied biostatistics and clinical epidemiology. I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
