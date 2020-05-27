@@ -1,0 +1,189 @@
+---
+title: "Optimization of a Logistic Regression Model using Optimx in R"
+author: "Joshua Philipp Entrop"
+date: '2020-05-27'
+output: html_document
+---
+
+In my <a href="https://www.joshua-entrop.com/post/optim_linear_reg/">last post</a> I used the <TT>optim()</TT> command to optimize a linear regression model. In this post, I am going to take that approach a little further and optimize a logistic regression model in the same manner. Thanks to John C. Nash, I got a first glimpse into the world of optimization functions in <TT>R</TT>. His book showed me how important it is to compare the results of different optimiyation alogrithms. Where I used the <TT>base</TT> optimization function <TT>optim()</TT> in my last post, I will use <TT>optimx()</TT> from the <TT>optimx</TT> package in this post. The <TT>optimx</TT> package and function were developed by Nash and colleagues as a wrapper of the <TT>base</TT> <TT>optim()</TT> function. There are numerous advantages in using <TT>optimx()</TT> instead of <TT>optim()</TT>. In my opinion, among the most important is an easier comparison between different optimization methods. In case someone is more interested in the variety of optimization functions and problems that come with them, I can warmly recommend John C. Nash's book <a href="https://www.wiley.com/en-us/Nonlinear+Parameter+Optimization+Using+R+Tools-p-9781118569283"><i>Nonlinear Parameter Optimization Using R Tools</i></a>.
+
+However, coming back to my main focus: the optimization of a logistic regression model using the <TT>optimx()</TT> function in R. For this, I would like to use the <TT>icu</TT> data set from the package <TT>aplore3</TT>. The data set contains data from 200 patients in an intensive care unit (ICU) and provides information whether the patient survived their stay or died. The particular question I would like to take a look at is whether the probability of dying during the ICU stay $P(Y = 1)$ is related to age $(x_1)$ and sex $(x_2)$. In order to do so, I firstly would like to load the data set and set up our variables:
+
+```{R, warning=FALSE, message=FALSE}
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(aplore3)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set icu from the package aplore3
+icu <- as.data.frame(icu)
+icu$sta_n <- ifelse(icu$sta == "Died", 1, 0)
+icu$female <- ifelse(icu$gender == "Female", 1, 0)
+```
+
+The specific model that I would like to use is:
+
+$$ P(Y|x_1, x_2) \sim \alpha + \beta_1  x_1 + \beta_2  x_2$$
+Using the logistic link-function we can find a linear function for the right side of the equation.
+
+$$ \ln \Bigg[ \frac{P(Y|x_1, x_2)}{1 - P(Y|x_1, x_2)} \Bigg] = \alpha + \beta_1  x_1 + \beta_2  x_2$$
+
+For this model, I would like to find the values $\alpha$, $\beta_1$ and $\beta_2$ that maximize the log-likelihood function and hence, provides the best fit to our empirical data provided in the <TT>icu</TT> data set. Therefore, we also need to define the log-likelihood function for our logistic regression model. According to <a href="https://www.wiley.com/en-us/Applied+Logistic+Regression%2C+3rd+Edition-p-9780470582473">Hosmer and Lemeshow</a> the log-likelihood function for a logistic regression model can be defined as
+
+$$ \sum_{i = 1}^{n}(y_i - \ln(\pi_i)) + (1 - y_i) * \ln(1 - \pi_i)). $$
+Where $\pi$ is defined using the sigmoid function as
+
+$$ P(Y|x_1, x_2) = \pi = \frac{\exp(\alpha + \beta_1  x_1 + \beta_2  x_2)}{1 + \exp(\alpha + \beta_1  x_1 + \beta_2  x_2)}. $$
+
+For the optimization in R we need to define the log-likelihood function as a function in <TT>R</TT>. Additionally, we need to add the constrain $0 < \pi < 1$ to our like-likelihood function, since we are interested in a probability $\pi$ which needs to be in the range between $0$ and $1$. We can use an <TT>if</TT> statement in <TT>R</TT> to include our constrain to our R function. For all parameter values that return a value of $\pi$ that is out of the bounds, we set the value to a very high number, for instance $10^{200}$. Using these high numbers for values outside the bounds, the optimization algorithm will dismiss these parameter values from our solutions. Note that we calculate <TT>-sum()</TT>, since we want to find the minimum of the log-likelihood function.
+
+```{R, warning=FALSE}
+# 3. Define log-likelihood function for logistic regression model -------------
+# (see applied logistic regression)
+negll <- function(par){
+  
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  y  <- icu$sta_n
+  x1 <- icu$age
+  x2 <- icu$female
+  
+  #Calculate pi and xb
+  xb <- alpha + beta1 * x1 + beta2 * x2
+  pi <- exp(xb) / (1 + exp(xb))
+  
+  #Set high values for 0 < pi < 1
+  if(any(pi) > 1 || any(pi) < 0) {
+    val <- 1e+200
+  } else {
+    val <- -sum(y * log(pi) + (1 - y) * log(1 - pi))
+  }
+  val
+}
+```
+
+Additionally to our log-likelihood function, it is also useful to specify the gradient function for our log-likelihood. This is not necessary for all optimization algorithms, however, it improves the testing for convergence. Hence, we can obtain better estimates by  also supplying the gradient function. According to Hosmer and Lemeshow, the gradient function of the log-likelihood function is defined as
+
+$$
+g_\alpha(\pi) = \sum(y_i - \pi_i)
+$$
+$$
+g_{x_j}(\pi) = \sum(x_{ji} * (y_i - \pi_i)).
+$$
+
+In our case we yield 3 gradient functions
+
+$$
+g_\alpha(\pi) = \sum(y_i - \pi_i)
+$$
+$$
+g_{x_1}(\pi) = \sum(x_{1_i} * (y_i - \pi_i))
+$$
+
+$$
+g_{x_2}(\pi) = \sum(x_{2_i} * (y_i - \pi_i)).
+$$
+
+We can then use these 3 functions to calculate the gradients in R. Also here we need to use <TT>-sum()</TT> for the gradient functions.
+
+```{R, warning=FALSE}
+# 4. Define fradient function for logistic regression model -------------------
+# (see applied logistic regression)
+negll.grad <- function(par){
+  
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  y  <- icu$sta_n
+  x1 <- icu$age
+  x2 <- icu$female
+  
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+  
+  #Calculate pi and xb
+  xb <- alpha + beta1 * x1 + beta2 * x2
+  pi <- exp(xb) / (1 + exp(xb))
+  
+  #Calculate gradients for alpha and beta1
+  gg[1] <- -sum(y - pi)
+  gg[2] <- -sum(x1 * (y - pi))
+  gg[3] <- -sum(x2 * (y - pi))
+  
+  return(gg)
+}
+```
+
+<TT>R</TT> also provides functions to estimate a numerical approximation of the gradient function. One of these function is <TT>grad()</TT> from the <TT>numDeriv</TT> package. It is useful to double check your analytic gradient function using one of these numerical approximations. Since, <TT>optimx()</TT> uses the <TT>grad()</TT> function for doing this, we are also going to use this function
+
+```{R, warning=FALSE}
+# 4.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 0, 0, 0
+mygrad <- negll.grad(c(0, 0, 0))
+numgrad <- grad(x = c(0, 0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+```
+
+We see, that the results from our analytic gradient function are identical to the results using the <TT>grad()</TT> function. So we can proceed and use the <TT>optimx()</TT> function to find the minimum of our log-likelihood function. As a first guess we use $0$ as initial value for all unknown parameters.
+
+```{R, warning=FALSE}
+# 4. Find minimum of log-likelihood function ----------------------------------
+opt <- optimx(par = c(0, 0, 0), negll, 
+              gr = negll.grad, 
+              control = list(trace = 0, all.methods = TRUE))
+
+# print reulsts of optimisation
+# remove not needed information for purpose of presentation 
+summary(opt, order = "convcode") %>% 
+  select(-value, -niter, -gevals, -fevals)
+```
+
+A value of $0$ in the <TT>convcode</TT> column of the output indicates, that the algorithm converged. Even though multiple algorithms converged and gave us a value for our three unknown parameters, they all provide slightly different estimates. Therefore, I think it would be interesting to compare our estimates with the estimates from the commonly used <TT>glm()</TT> function. Below I wrote a small function that estimates the mean differences in the estimates from the different optimization methods and the <TT>glm</TT> model.
+
+```{R, warning=FALSE}
+# 5. Estimate regression coeficents using glm ---------------------------------
+glm_model <- glm(sta_n ~ age + female, 
+                 data = icu,
+                 family = binomial(link = "logit"))
+
+# 6. Comparing results from optimx and glm ------------------------------------
+glm_results <- unname(coef(glm_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+    
+    optimisation_algorithm <- attributes(coef_opt)$dimnames[[1]][i]
+
+    mle_glm1 <- (coef_opt[i, "p1"] - glm_results[1])
+    mle_glm2 <- (coef_opt[i, "p2"] - glm_results[2])
+    mle_glm3 <- (coef_opt[i, "p3"] - glm_results[3])
+    
+    mean_difference <- mean(mle_glm1, mle_glm2, mle_glm3, na.rm = TRUE)
+    
+    data.frame(optimisation_algorithm, mean_difference)
+    
+  }) %>% 
+    bind_rows() %>% 
+  filter(!is.na(mean_difference)) %>% 
+  mutate(mean_difference = abs(mean_difference)) %>% 
+  arrange(mean_difference)
+```
+
+This shows that the <TT>Rcgmin</TT> algorithm yield the most similar results to the estimates from the <TT>glm</TT> model. However, most of the algorithms in the table provide estimates similar to the estimates from the <TT>glm</TT> model, which indicates that our optimization of the logistic regression model using the log-likelihood function and the gradient function worked out well.
