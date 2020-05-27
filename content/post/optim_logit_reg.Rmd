@@ -1,13 +1,15 @@
 ---
-title: "Optimization of a Logistic Regression Model using Optimx in R"
+title: "Optimisation of a Logistic Regression Model using Optimx in R"
 author: "Joshua Philipp Entrop"
 date: '2020-05-27'
+categories: [Optimisation]
+tags: [R, logistic regression, manuel optimisation]
 output: html_document
 ---
 
-In my <a href="https://www.joshua-entrop.com/post/optim_linear_reg/">last post</a> I used the <TT>optim()</TT> command to optimize a linear regression model. In this post, I am going to take that approach a little further and optimize a logistic regression model in the same manner. Thanks to John C. Nash, I got a first glimpse into the world of optimization functions in <TT>R</TT>. His book showed me how important it is to compare the results of different optimiyation alogrithms. Where I used the <TT>base</TT> optimization function <TT>optim()</TT> in my last post, I will use <TT>optimx()</TT> from the <TT>optimx</TT> package in this post. The <TT>optimx</TT> package and function were developed by Nash and colleagues as a wrapper of the <TT>base</TT> <TT>optim()</TT> function. There are numerous advantages in using <TT>optimx()</TT> instead of <TT>optim()</TT>. In my opinion, among the most important is an easier comparison between different optimization methods. In case someone is more interested in the variety of optimization functions and problems that come with them, I can warmly recommend John C. Nash's book <a href="https://www.wiley.com/en-us/Nonlinear+Parameter+Optimization+Using+R+Tools-p-9781118569283"><i>Nonlinear Parameter Optimization Using R Tools</i></a>.
+In my <a href="https://www.joshua-entrop.com/post/optim_linear_reg/">last post</a> I used the <TT>optim()</TT> command to optimise a linear regression model. In this post, I am going to take that approach a little further and optimise a logistic regression model in the same manner. Thanks to John C. Nash, I got a first glimpse into the world of optimisation functions in <TT>R</TT>. His book showed me how important it is to compare the results of different optimisation algorithms. Where I used the <TT>base</TT> optimisation function <TT>optim()</TT> in my last post, I will use <TT>optimx()</TT> from the <TT>optimx</TT> package in this post. The <TT>optimx</TT> package and function were developed by Nash and colleagues as a wrapper of the <TT>base</TT> <TT>optim()</TT> function. There are numerous advantages in using <TT>optimx()</TT> instead of <TT>optim()</TT>. In my opinion, among the most important is an easier comparison between different optimisation methods. In case someone is more interested in the variety of optimisation functions and problems that come with them, I can warmly recommend John C. Nash's book <a href="https://www.wiley.com/en-us/Nonlinear+Parameter+Optimization+Using+R+Tools-p-9781118569283"><i>Nonlinear Parameter Optimisation Using R Tools</i></a>.
 
-However, coming back to my main focus: the optimization of a logistic regression model using the <TT>optimx()</TT> function in R. For this, I would like to use the <TT>icu</TT> data set from the package <TT>aplore3</TT>. The data set contains data from 200 patients in an intensive care unit (ICU) and provides information whether the patient survived their stay or died. The particular question I would like to take a look at is whether the probability of dying during the ICU stay $P(Y = 1)$ is related to age $(x_1)$ and sex $(x_2)$. In order to do so, I firstly would like to load the data set and set up our variables:
+However, coming back to my main focus: the optimisation of a logistic regression model using the <TT>optimx()</TT> function in R. For this, I would like to use the <TT>icu</TT> data set from the package <TT>aplore3</TT>. The data set contains data from 200 patients in an intensive care unit (ICU) and provides information whether the patient survived their stay or died. The particular question I would like to take a look at is whether the probability of dying during the ICU stay $P(Y = 1)$ is related to age $(x_1)$ and sex $(x_2)$. In order to do so, I firstly would like to load the data set and set up our variables:
 
 ```{R, warning=FALSE, message=FALSE}
 # 1. Prefix -------------------------------------------------------------------
@@ -43,7 +45,7 @@ Where $\pi$ is defined using the sigmoid function as
 
 $$ P(Y|x_1, x_2) = \pi = \frac{\exp(\alpha + \beta_1  x_1 + \beta_2  x_2)}{1 + \exp(\alpha + \beta_1  x_1 + \beta_2  x_2)}. $$
 
-For the optimization in R we need to define the log-likelihood function as a function in <TT>R</TT>. Additionally, we need to add the constrain $0 < \pi < 1$ to our like-likelihood function, since we are interested in a probability $\pi$ which needs to be in the range between $0$ and $1$. We can use an <TT>if</TT> statement in <TT>R</TT> to include our constrain to our R function. For all parameter values that return a value of $\pi$ that is out of the bounds, we set the value to a very high number, for instance $10^{200}$. Using these high numbers for values outside the bounds, the optimization algorithm will dismiss these parameter values from our solutions. Note that we calculate <TT>-sum()</TT>, since we want to find the minimum of the log-likelihood function.
+For the optimisation in R we need to define the log-likelihood function as a function in <TT>R</TT>. Additionally, we need to add the constrain $0 < \pi < 1$ to our like-likelihood function, since we are interested in a probability $\pi$ which needs to be in the range between $0$ and $1$. We can use an <TT>if</TT> statement in <TT>R</TT> to include our constrain to our R function. For all parameter values that return a value of $\pi$ that is out of the bounds, we set the value to a very high number, for instance $10^{200}$. Using these high numbers for values outside the bounds, the optimisation algorithm will dismiss these parameter values from our solutions. Note that we calculate <TT>-sum()</TT>, since we want to find the minimum of the log-likelihood function.
 
 ```{R, warning=FALSE}
 # 3. Define log-likelihood function for logistic regression model -------------
@@ -74,7 +76,7 @@ negll <- function(par){
 }
 ```
 
-Additionally to our log-likelihood function, it is also useful to specify the gradient function for our log-likelihood. This is not necessary for all optimization algorithms, however, it improves the testing for convergence. Hence, we can obtain better estimates by  also supplying the gradient function. According to Hosmer and Lemeshow, the gradient function of the log-likelihood function is defined as
+Additionally to our log-likelihood function, it is also useful to specify the gradient function for our log-likelihood. This is not necessary for all optimisation algorithms, however, it improves the testing for convergence. Hence, we can obtain better estimates by  also supplying the gradient function. According to Hosmer and Lemeshow, the gradient function of the log-likelihood function is defined as
 
 $$
 g_\alpha(\pi) = \sum(y_i - \pi_i)
@@ -155,7 +157,7 @@ summary(opt, order = "convcode") %>%
   select(-value, -niter, -gevals, -fevals)
 ```
 
-A value of $0$ in the <TT>convcode</TT> column of the output indicates, that the algorithm converged. Even though multiple algorithms converged and gave us a value for our three unknown parameters, they all provide slightly different estimates. Therefore, I think it would be interesting to compare our estimates with the estimates from the commonly used <TT>glm()</TT> function. Below I wrote a small function that estimates the mean differences in the estimates from the different optimization methods and the <TT>glm</TT> model.
+A value of $0$ in the <TT>convcode</TT> column of the output indicates, that the algorithm converged. Even though multiple algorithms converged and gave us a value for our three unknown parameters, they all provide slightly different estimates. Therefore, I think it would be interesting to compare our estimates with the estimates from the commonly used <TT>glm()</TT> function. Below I wrote a small function that estimates the mean differences in the estimates from the different optimisation methods and the <TT>glm</TT> model.
 
 ```{R, warning=FALSE}
 # 5. Estimate regression coeficents using glm ---------------------------------
@@ -186,4 +188,4 @@ lapply(1:nrow(coef_opt), function(i){
   arrange(mean_difference)
 ```
 
-This shows that the <TT>Rcgmin</TT> algorithm yield the most similar results to the estimates from the <TT>glm</TT> model. However, most of the algorithms in the table provide estimates similar to the estimates from the <TT>glm</TT> model, which indicates that our optimization of the logistic regression model using the log-likelihood function and the gradient function worked out well.
+This shows that the <TT>Rcgmin</TT> algorithm yield the most similar results to the estimates from the <TT>glm</TT> model. However, most of the algorithms in the table provide estimates similar to the estimates from the <TT>glm</TT> model, which indicates that our optimisation of the logistic regression model using the log-likelihood function and the gradient function worked out well.
