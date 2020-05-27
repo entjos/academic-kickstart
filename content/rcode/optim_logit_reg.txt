@@ -1,0 +1,126 @@
+###############################################################################
+# Title: Optimisation of a Linear Regression Model
+# Date: 2020-05-26
+#
+# Author: Joshua P. Entrop
+# Website: joshua-entrop.com
+###############################################################################
+
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(aplore3)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set icu from the package aplore3
+icu <- as.data.frame(icu)
+icu$sta_n <- ifelse(icu$sta == "Died", 1, 0)
+icu$female <- ifelse(icu$gender == "Female", 1, 0)
+
+# 3. Define log-likelihood function for logistic regression model -------------
+# (see applied logistic regression)
+negll <- function(par){
+  
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  y  <- icu$sta_n
+  x1 <- icu$age
+  x2 <- icu$female
+  
+  #Calculate pi and xb
+  xb <- alpha + beta1 * x1 + beta2 * x2
+  pi <- exp(xb) / (1 + exp(xb))
+  
+  if(any(pi) > 1 || any(pi) < 0) {
+    val <- 1e+200
+  } else {
+    val <- -sum(y * log(pi) + (1 - y) * log(1 - pi))
+  }
+  val
+}
+
+# 4. Define fradient function for logistic regression model -------------------
+# (see applied logistic regression)
+negll.grad <- function(par){
+  
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  y  <- icu$sta_n
+  x1 <- icu$age
+  x2 <- icu$female
+  
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+  
+  #Calculate pi and xb
+  xb <- alpha + beta1 * x1 + beta2 * x2
+  pi <- exp(xb) / (1 + exp(xb))
+  
+  #Calculate gradients for alpha and beta1
+  gg[1] <- -sum(y - pi)
+  gg[2] <- -sum(x1 * (y - pi))
+  gg[3] <- -sum(x2 * (y - pi))
+  
+  return(gg)
+}
+
+# 4.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 0, 0, 0
+mygrad <- negll.grad(c(0, 0, 0))
+numgrad <- grad(x = c(0, 0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+
+# 4. Find minimum of log-likelihood function ----------------------------------
+opt <- optimx(par = c(0, 0, 0), negll, 
+              gr = negll.grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+summary(opt, order = "convcode")
+
+# 5. Estimate regression coeficents using glm ---------------------------------
+glm_model <- glm(sta_n ~ age + female, 
+                 data = icu,
+                 family = binomial(link = "logit"))
+
+# 6. Comparing results from optimx and glm ------------------------------------
+glm_results <- unname(coef(glm_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+    
+    opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+
+    mle_glm1 <- (coef_opt[i, "p1"] - glm_results[1])
+    mle_glm2 <- (coef_opt[i, "p2"] - glm_results[2])
+    mle_glm3 <- (coef_opt[i, "p3"] - glm_results[3])
+    
+    mean_dif <- mean(mle_glm1, mle_glm2, mle_glm3, na.rm = TRUE)
+    
+    data.frame(opt_name, mean_dif)
+    
+  }) %>% 
+    bind_rows() %>% 
+  filter(!is.na(mean_dif)) %>% 
+  mutate(mean_dif = abs(mean_dif)) %>% 
+  arrange(mean_dif)
+
+# /////////////////////////////////////////////////////////////////////////////
+# END OF R-FILE
