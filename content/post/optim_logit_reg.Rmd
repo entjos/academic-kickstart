@@ -3,7 +3,7 @@ title: "Optimisation of a Logistic Regression Model using Optimx in R"
 author: "Joshua Philipp Entrop"
 date: '2020-05-27'
 categories: [Optimisation]
-tags: [R, logistic regression, manuel optimisation]
+tags: [R, logistic regression, manual optimisation]
 output: html_document
 ---
 
