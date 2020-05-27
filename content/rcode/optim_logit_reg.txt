@@ -1,6 +1,6 @@
 ###############################################################################
-# Title: Optimisation of a Linear Regression Model
-# Date: 2020-05-26
+# Title: Optimisation of a Logistic Regression Model
+# Date: 2020-05-27
 #
 # Author: Joshua P. Entrop
 # Website: joshua-entrop.com
