@@ -10,7 +10,7 @@ authors:
 superuser: true
 
 # Role/position
-role: Candidate in Epidemiology (M.Sc.)
+role: MMSc in Epidemiology
 
 # Organizations/Affiliations
 organizations:
@@ -28,12 +28,12 @@ interests:
 
 education:
   courses:
-  - course: M.Sc. Public Health Epidemiology
-    institution: Karolinska Institutet, Stockholm (Sweden)
-    year: 2018 -
-  - course: B.A. Social Science
+  - course: MMSc Public Health Epidemiology
+    institution: Karolinska Institutet Stockholm, Sweden
+    year:
+  - course: BA Social Science
     institution: Ruhr-University Bochum, Germany
-    year: 2015 - 2018
+    year:
 
 # Social/Academic Networking
 # For available icons, see: https://sourcethemes.com/academic/docs/page-builder/#icons
@@ -68,4 +68,4 @@ user_groups:
 - Visitors
 ---
 
-I am a student with passion for health data and statistical analyses. My research interests are within applied biostatistics and clinical epidemiology. I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
+I am a epidemiologist with passion for health data and statistical analyses. My research interests are within applied biostatistics and clinical epidemiology. I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
