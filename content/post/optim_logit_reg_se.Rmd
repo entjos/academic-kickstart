@@ -1,0 +1,183 @@
+---
+title: "Estimating the Standard Error for estimates derived using optimx: an example for a logistic regression model"
+author: "Joshua Philipp Entrop"
+date: '2020-06-25'
+output: html_document
+---
+
+```{R, include = FALSE}
+###############################################################################
+# Title: Optimisation of a Logistic Regression Model
+# Date: 2020-05-26
+#
+# Author: Joshua P. Entrop
+# Website: joshua-entrop.com
+###############################################################################
+
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(aplore3)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+require(broom)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set icu from the package aplore3
+icu <- as.data.frame(icu)
+icu$sta_n <- ifelse(icu$sta == "Died", 1, 0)
+icu$female <- ifelse(icu$gender == "Female", 1, 0)
+
+# 3. Define log-likelihood function for logistic regression model -------------
+# (see applied logistic regression)
+negll <- function(par){
+  
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  y  <- icu$sta_n
+  x1 <- icu$age
+  x2 <- icu$female
+  
+  #Calculate pi and xb
+  xb <- alpha + beta1 * x1 + beta2 * x2
+  pi <- exp(xb) / (1 + exp(xb))
+  
+  if(any(pi) > 1 || any(pi) < 0) {
+    val <- 1e+200
+  } else {
+    val <- -sum(y * log(pi) + (1 - y) * log(1 - pi))
+  }
+  val
+}
+
+# 4. Define fradient function for logistic regression model -------------------
+# (see applied logistic regression)
+negll.grad <- function(par){
+  
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  y  <- icu$sta_n
+  x1 <- icu$age
+  x2 <- icu$female
+  
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+  
+  #Calculate pi and xb
+  xb <- alpha + beta1 * x1 + beta2 * x2
+  pi <- exp(xb) / (1 + exp(xb))
+  
+  #Calculate gradients for alpha and beta1
+  gg[1] <- -sum(y - pi)
+  gg[2] <- -sum(x1 * (y - pi))
+  gg[3] <- -sum(x2 * (y - pi))
+  
+  return(gg)
+}
+
+# 4.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 0, 0, 0
+mygrad <- negll.grad(c(0, 0, 0))
+numgrad <- grad(x = c(0, 0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+
+# 4. Find minimum of log-likelihood function ----------------------------------
+opt <- optimx(par = c(0, 0, 0), negll, 
+              gr = negll.grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+summary(opt, order = "convcode")
+
+# 5. Estimate regression coeficents using glm ---------------------------------
+glm_model <- glm(sta_n ~ age + female, 
+                 data = icu,
+                 family = binomial(link = "logit"))
+
+# 6. Comparing results from optimx and glm ------------------------------------
+glm_results <- unname(coef(glm_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+    
+    opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+
+    mle_glm1 <- (coef_opt[i, "p1"] - glm_results[1])
+    mle_glm2 <- (coef_opt[i, "p2"] - glm_results[2])
+    mle_glm3 <- (coef_opt[i, "p3"] - glm_results[3])
+    
+    mean_dif <- mean(mle_glm1, mle_glm2, mle_glm3, na.rm = TRUE)
+    
+    data.frame(opt_name, mean_dif)
+    
+  }) %>% 
+    bind_rows() %>% 
+  filter(!is.na(mean_dif)) %>% 
+  mutate(mean_dif = abs(mean_dif)) %>% 
+  arrange(mean_dif)
+```
+
+In my <a href="https://www.joshua-entrop.com/post/optim_logit_reg/">last post</a> I estimated the point estimates for a logistic regression model using <TT>optimx()</TT> from the <TT>optimx</TT> package in <TT>R</TT>. In this post I would like to contine with this model an try to find the standard error (SE) for the derived estimates. Uncertainty is probably the most important quantity in statistics and therefore I think it is worthwhile to look a lite bit more into this. However, before, we can start with the estimation of the SEs, I would ask you to run the code for deriving the point estimates for the logistic regression using <TT>optimx()</TT>, which you can find <a href="https://www.joshua-entrop.com/rcode/optim_logit_reg.txt/">here</a>. This will be the starting point for our further calculations.
+
+When I searched for an answer to solve the problem of estimating the SE using the output of <TT>optimx()</TT> in R, I came across this quite old <a href="https://stat.ethz.ch/pipermail/r-help/2004-February/046272.html">email</a> from 2004 on the R-help email list and a <a href="https://stats.stackexchange.com/questions/27033/in-r-given-an-output-from-optim-with-a-hessian-matrix-how-to-calculate-paramet">discussion</a> on stackexchange. Basically it says that we can compute the covariance matrix as the inverse of the negative of the Hessian matrix. Given our estimated covariance matrix, we can then estimate the SE as the square root of the diagonal elements of our covariance matrix.
+
+So, lets try to implement this in <TT>R</TT>. First we need to extract the Hessian matrix from our <TT>optimx()</TT> result object. Note, that you need to set the option <TT>hessian = TRUE</TT> in your <TT>optimx()</TT> call. This asks <TT>optimx()</TT> to estimate the Hessian matrix for the different optimization algorithms and allows us to obtain this information after the optimization is finished. In the example below, I only obtain the Hessian matrix for the optimization algorithm <TT>Rcgmin</TT>, since it showed the best fit compared to the results from the <TT>glm()</TT> model.
+
+```{R, warning=FALSE}
+# 7. Estimate the standard error ----------------------------------------------
+
+#Extract hessian matrix for Rcgmin optimisation
+hessian_m <- attributes(opt)$details["Rcgmin", "nhatend"][[1]]
+```
+
+After we extracted the Hessian matrix, we can follow the procedure described above. Also note, that I used the Hessian matrix, instead of the negative Hessian matrix in my example. When I used the negative Hessian matrix, I got negative values for the diagonal values of the inverse. Hence, I was not able to obtain the squared root of these values. Also, I obtained the correct SEs using this approach.
+
+```{R, warning=FALSE}
+# Estimate se based on hession matrix
+fisher_info <- solve(hessian_m)
+prop_se  <- sqrt(diag(fisher_info))
+```
+
+Now were we obtained our estimates for the SEs, it would be interesting to compare them with the results of a <TT>glm()</TT> call, that tries to fit the same model as we do.
+
+```{R, warning=FALSE}
+# Compare the estimated se from our model with the one from the glm
+ses <- data.frame(se_Rcgmin = prop_se, 
+                  se_glm = tidy(glm_model)$std.error) %>%
+  print()
+
+all.equal(ses[,"se_Rcgmin"], ses[, "se_glm"])
+```
+
+The differences between the estimates of the SEs using the Hessian matrix and the <TT>glm()</TT> model are very small. It seems like our approach did a fairly good job. Hence, we can now use our SE estimates to compute the 95%CIs of our point estimates.
+
+```{R, warning=FALSE}
+# 8. Estimate 95%CIs using estimation of SE -----------------------------------
+
+# Extracting estimates from Rcgmin optimisaiton
+coef_test <- coef(opt)["Rcgmin",]
+
+# Compute 95%CIs
+upper <- coef_test + 1.96 * prop_se
+lower <- coef_test - 1.96 * prop_se
+
+# Print 95%CIs
+data.frame(coef_test, lower=lower, upper=upper, se = prop_se)
+```
+
+Combining this and my previous post on <a href="https://www.joshua-entrop.com/post/optim_logit_reg/">optimizing a logistic regression using optimx()</a>, we were able to more or less manually obtain the results of a logistic regression model, that we would commonly obtain using the <TT>glm()</TT> function.
