@@ -24,7 +24,7 @@ date_format = "Jan 2006"
   location = "Taipei, Taiwan"
   date_start = "2019-06-30"
   date_end = "2019-07-31"
-  description = """During my internship at the Taiwan National Burden of Disease Centre, I was involved in the estimation of the health burden of alcohol consumption. Most of my work included data analysis and statistical analysis. For this, I developed a syntax in R based on my own functions to conduct the whole analysis and statistical assessment in R."""
+  description = """During my internship at the Taiwan National Burden of Disease Centre, I was involved in the estimation of the health burden of alcohol consumption. Most of my work in this project included data analysis and statistical analysis."""
 
 [[experience]]
   title = "Student Teaching Assistant"
@@ -33,7 +33,7 @@ date_format = "Jan 2006"
   location = "Bochum, Germany"
   date_start = "2017-04-30"
   date_end = "2018-07-31"
-  description = """As student teaching assistens I mainly conducted and planned seminars with 15 to 20 students in addition to the lecture "Introduction to Micro- and Macroeconomics". One of this seminars was also held as a online seminar via Adobe Connect. In addition to my teaching tasks, I also administered the Moodle and Blackboard courses for the lecture."""
+  description = """As a student teaching assistant I mainly conducted and planned seminars with 15 to 20 students in addition to the lecture "Introduction to Micro- and Macroeconomics". One of these seminars was also held as an online seminar via Adobe Connect. In addition to my teaching tasks, I also administered the Moodle and Blackboard courses for both lectures."""
 
 [[experience]]
   title = "Research Intern"
@@ -42,6 +42,6 @@ date_format = "Jan 2006"
   location = "Bochum, Germany"
   date_start = "2017-08-31"
   date_end = "2018-09-30"
-  description = """During my internship at the NRW Centre for Health I was mainly engaged in the estimating of the diabetes incidence for Germany based on the Diabetes Population Risk Tool and in the estimating of the diabetes incidence for NRW from 2013 till 2030. Within these projects my tasks encompass the constructing of R and SPSS syntax, screening of the newest literature and the writing of a first article draft."""
+  description = """During my internship at the NRW Centre for Health I was mainly engaged in the estimation of the diabetes incidence for Germany based on the Diabetes Population Risk Tool and in the estimation of the diabetes incidence for NRW from 2013 till 2030."""
 
 +++
