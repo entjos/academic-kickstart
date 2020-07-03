@@ -1,0 +1,283 @@
+---
+title: "Optimisation of an exponential survival model using Optimx in R"
+author: "Joshua Philipp Entrop"
+date: '2020-06-29'
+output: html_document
+categories: [Optimisation, R]
+tags: [R, survival analysis, manual optimisation]
+draft: TRUE
+---
+
+In this blog post, we will fit a Poisson regression model by minimising its likelihood function using <TT>optimx()</TT> in <TT>R</TT>. As example we will use the lung cancer data set included in the <TT>{survival}</TT> package. The data set includes information on 228 lung cancer patients from the North Central Cancer Treatment Group (NCCTG). Specifically, we will estimate the survival of lung cancer patients by sex and age using a simple Poisson regression model. The general survival function $S(t)$ for our model can be specified as
+
+$$ S(t) = \exp(-\lambda t) $$
+
+where the hazard function $h(t)$ is equal to
+
+$$ h(t) = \lambda = \exp(\alpha + \beta_1  x_{female} + \beta_2  x_{age}). $$
+To get started we first need to load all the packages that we will need for our estimations and set up the data set.
+
+```{r, warning = FALSE, message = FALSE}
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(flexsurv)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+require(tibble)
+require(car)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung <- as.data.frame(survival::lung)
+
+#Recode dichotomous vairables
+lung$female <- ifelse(lung$sex == 2, 1, 0)
+lung$status_n <- ifelse(lung$status == 2, 1, 0)
+```
+
+At this point we would usually call <TT>survreg()</TT> or <TT>flexsurvreg()</TT> to fit our Possion model. However, in this post we will use the likelihood function of our Possion regression model together with <TT>optimx()</TT> from the <TT>{optimx}</TT> package instead. For this we first need to find the likelihood function for our model and then use <TT>optimx()</TT> to find the values for our parameters, that maximise our likelihood function.
+
+The log likelihood ($\ln L_i$) for a survival model can be specified as
+
+$$ \ln L_i = d_i \ln h(t_i) + \ln S(t_i). $$
+Where $d_i$ indicates whether the $i^{th}$ subject experienced an event (1) or did not experienced an event (0) during follow up and $t_i$ is the time from the beginning of follow up until censoring.
+
+To obtain the log likelihood function for our Possion model we can substitute $h(t)$ and $S(t)$ with our previously defined hazard and survival function respectively. Thus, we get the following equation for our log likelihood
+
+$$\ln L_i = d_i \ln \lambda - \lambda t_i $$
+
+where $\lambda$ is defined as mentioned above.
+
+The next step now is to write our likelihood function as a function in R, which can be maximised by <TT>optimx()</TT>. Please keep in mind, that <TT>optimx()</TT> by default minimises the function we pass to it. However, in our case we need to find the maximum of our likelihood function. To yield the estimates, that maximise our function we can just ask <TT>optimx()</TT> to minimise the negative of our likelihood. For more information on the setting up the likelihood function for <TT>optimx()</TT> or <TT>optim()</TT> please take a look at [this](https://www.joshua-entrop.com/post/optim_linear_reg/) earlier blog post.
+
+Lets set up our likelihood function in R.
+
+```{R}
+# 3. Define log-likelihood function for Poisson regression model --------------
+negll <- function(par){
+  
+  #Extract guesses for alpha, beta1 and beta2
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+  
+  #Calculate lambda
+  lambda <- exp(alpha + beta1 * x1 + beta2 * x2)
+  
+  #Estimate negetive log likelihood value
+  val <- -sum(d * log(lambda) - lambda * t)
+  
+  return(val)
+}
+```
+
+To improve the optimisation we can further pass the gradient function of our likelihood function to our <TT>optimx()</TT> call. After partially deriving $L_i$ for $\alpha$ and $\beta_i$ we yield the two following equations for the gradient of $L_i$.
+
+$$ \sum d_i - \lambda_i t_i  = 0$$
+
+$$ \sum d_i x_{ij} - \lambda_i x_{ij} t = 0$$
+
+Given these gradient equations we can now define our gradient function in R. For this we need to create a function, that returns the gradient for each of our unknown parameters. Since we have three unknown parameters our gradient function will return a vector <TT>gg</TT> with three values.
+
+```{R}
+# 4. Define fradient function for logistic regression model -------------------
+# (see applied logistic regression)
+negll.grad <- function(par){
+  
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+  
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+  
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+  
+  #Calculate pi and xb
+  lambda <- exp(alpha + beta1 * x1 + beta2 * x2)
+  
+  #Calculate gradients for alpha and beta1
+  gg[1] <- -sum(d - lambda * t)
+  gg[2] <- -sum(d * x1 - lambda * x1 * t)
+  gg[3] <- -sum(d * x2 - lambda * x2 * t)
+  
+  return(gg)
+}
+```
+
+We can compare the results of our gradient function with the results from the <TT>grad()</TT> function included in the <TT>{numDeriv}</TT> package, before we begin with the optimisation of our functions. This is just a check to be sure our gradient function works properly.
+
+```{R}
+# 4.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 0, 0, 0
+mygrad <- negll.grad(c(0, 0, 0))
+numgrad <- grad(x = c(0, 0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+```
+
+Looks like our gradient functions does a good job. Now that we have all the functions and information we need for our optimisation, we can call <TT>optimx()</TT> and pass our functions to it.
+
+The output of <TT>optimx()</TT> provides us with estimates for our coefficients and information regarding whether the optimisation algorithm converged (<TT>convcode == 0</TT>) besides the maximum value of the negative log likelihood obtained by the different algorithms. Hence, it is useful to sort the results by <TT>convcode</TT> and <TT>value</TT>.
+
+```{R, warning = FALSE}
+# 4. Find minimum of log-likelihood function ----------------------------------
+
+# Passing names to the values in the par vector improves readability of results
+opt <- optimx(par = c(alpha = 0, beta_female = 0, beta_age = 0), 
+              fn = negll,
+              gr = negll.grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+# Show results for optimisation alogrithms, that convergered (convcode == 0)
+summary(opt, order = "value") %>%
+  rownames_to_column("algorithm") %>% 
+  filter(convcode == 0) %>% 
+  select(algorithm, alpha, beta_female, beta_age, value)
+```
+
+The summary of our <TT>optimx()</TT> call shows, that the <TT>nlminb</TT> algorithm yielded the best result. Lets see if this result is equal to the results we will get, if we use <TT>flexsurvreg</TT> from the <TT>{flexsurv}</TT> package to fit our desired model.
+
+```{R, warning = FALSE}
+# 5. Estimate regression coeficents using glm ---------------------------------
+pois_model <- flexsurvreg(Surv(time, status_n == 1) ~ female + age, 
+                          data = lung,
+                          dist = "exp")
+
+# 6. Comparing results from optimx and glm ------------------------------------
+pois_results <- unname(coef(pois_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+  
+  opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+  
+  mle_pois1 <- (coef_opt[i, 1] - pois_results[1])
+  mle_pois2 <- (coef_opt[i, 2] - pois_results[2])
+  mle_pois3 <- (coef_opt[i, 3] - pois_results[3])
+  
+  mean_dif <- mean(mle_pois1, mle_pois2, mle_pois3, na.rm = TRUE)
+  
+  data.frame(opt_name, mean_dif)
+  
+}) %>% 
+  bind_rows() %>% 
+  filter(!is.na(mean_dif)) %>% 
+  mutate(mean_dif = abs(mean_dif)) %>% 
+  arrange(mean_dif)
+```
+
+The mean difference between our estimates and the estimates obtained by using <TT>flexsurvreg()</TT> are close to zero. Seems like our optimisation using the log likelihood did a good job.
+
+However, the result obtained with <TT>flexsurvreg()</TT> provided us with estimates for the standard errors (SEs) of our hazard estimates, too. Since the measurement of uncertainty is at the heart of statistics, I think it is worthwhile to obtain the SEs for our estimates with the information provided by our <TT>optimx()</TT> call. For a more detailed discussion on how this is done please take a look at one of my previous blog posts [here](https://www.joshua-entrop.com/post/optim_logit_reg_se/).
+
+Let's obtain the SEs for our model by using the results from our <TT>optimx()</TT> call and compare them with the SEs obtained by <TT>flexsurvreg()</TT>.
+
+```{R}
+# 7. Estimate the standard error ----------------------------------------------
+
+#Extract hessian matrix for Rcgmin optimisation
+hessian_m <- attributes(opt)$details["nlminb", "nhatend"][[1]]
+
+# Estimate se based on hession matrix
+fisher_info <- solve(hessian_m)
+prop_se  <- sqrt(diag(fisher_info))
+
+# Compare the estimated se from our model with the one from the flexsurv model
+# Note use res.t to get the estimates on the reale scale without transformaiton
+ses <- data.frame(se_nlminb = prop_se, 
+                  se_felxsurvreg = pois_model$res.t[, "se"]) %>%
+  print()
+
+all.equal(ses[,"se_nlminb"], ses[, "se_felxsurvreg"])
+```
+
+Looks like we got nearly equal results. Let us now use these information an estimate the 95% confidence intervals (CIs) for our estimates.
+
+```{R}
+# 8. Estimate 95%CIs using estimation of SE -----------------------------------
+
+# Extracting estimates from Rcgmin optimisaiton
+coef_test <- coef(opt)["nlminb",]
+
+# Compute 95%CIs
+upper <- coef_test + 1.96 * prop_se
+lower <- coef_test - 1.96 * prop_se
+
+# Print 95%CIs
+data.frame(Estimate = coef_test, 
+           CI_lower = lower, 
+           CI_upper = upper, 
+           se       = prop_se)
+```
+
+One usual way to plot the results of our estimation is plotting the survival function $S(t)$. Since, uncertainty is important I also want to plot the CI for our survival function. To obtain estimates for the SE of the survival function $S(t)$ is a little bit more complicated. However, the amazing <TT>deltaMethod()</TT> function included in the <TT>{car}</TT> package makes it fairly easy to obtain estimates for the SEs. We just need to provide <TT>deltaMethod()</TT> with a vector of our coefficients, our covariance matrix and the computation for which we would like to obtain the SEs. 
+
+```{R}
+# 9. Plot survival curve with 95%-CI ------------------------------------------
+
+# 9.1 Use Delta Method to compute CIs across time of follow-up ================
+
+# Get coefficents for nlminb optimisation
+nlminb_coef <- coef(opt)["nlminb", ]
+
+# Compute CIs for a 60 year of female across time
+surv_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+  
+  g <- paste("exp(-exp(alpha + beta_female + 60 * beta_age) *", t, ")")
+  
+  fit <- deltaMethod(nlminb_coef, g, solve(hessian_m))
+  
+  data.frame(time     = t,
+             estimate = fit[, "Estimate"],
+             ci_low   = fit[, "2.5 %"],
+             ci_up    = fit[, "97.5 %"])
+  
+}) %>% 
+  bind_rows()
+```
+
+We can now use these information to plot our survival curve $S(t)$ together with a grey shaded area that indicates the CIs for our survival function.
+
+```{R}
+# 9.2 Plot survival curve with CIs ============================================
+plot(surv_optim_female$time,
+     surv_optim_female$estimate,
+     ylim = c(0, 1),
+     type = "n",
+     xlab = "Time in Days",
+     ylab = "S(t)",
+     main = "Survival after lung cancer \n for 60 year old females")
+polygon(c(surv_optim_female$time, rev(surv_optim_female$time)),
+        c(surv_optim_female$ci_low, rev(surv_optim_female$ci_up)),
+        border = NA,
+        col = "grey")
+lines(surv_optim_female$time,
+     surv_optim_female$estimate)
+legend(0, 0.15,
+       fill = "grey",
+       "95% CI")
+
+```
+
+To sum it up, in this blog post we learned how to fit a Possion regression model using the log likelihood function in R instead of going the usual way of calling <TT>survreg()</TT> or <TT>flexsurvreg()</TT>. I think doing this is a good way of gaining an deeper understanding of how estimates for regression models are obtained. In my next post I will take this a step further and show how we can fit a Weibull regression model in R using the log likelihood function in combination with <TT>optimx()</TT>.
