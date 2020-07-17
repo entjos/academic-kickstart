@@ -47,7 +47,7 @@ At this point we would usually call <TT>survreg()</TT> or <TT>flexsurvreg()</TT>
 The log likelihood ($\ln L_i$) for a survival model can be specified as
 
 $$ \ln L_i = d_i \ln h(t_i) + \ln S(t_i). $$
-Where $d_i$ indicates whether the $i^{th}$ subject experienced an event (1) or did not experienced an event (0) during follow up and $t_i$ is the time from the beginning of follow up until censoring.
+Where $d_i$ indicates whether the $i^{th}$ subject experienced an event (1) or did not experience an event (0) during follow up and $t_i$ is the time from the beginning of follow up until censoring.
 
 To obtain the log likelihood function for our Possion model we can substitute $h(t)$ and $S(t)$ with our previously defined hazard and survival function respectively. Thus, we get the following equation for our log likelihood
 
@@ -55,7 +55,7 @@ $$\ln L_i = d_i \ln \lambda - \lambda t_i $$
 
 where $\lambda$ is defined as mentioned above.
 
-The next step now is to write our likelihood function as a function in R, which can be maximised by <TT>optimx()</TT>. Please keep in mind, that <TT>optimx()</TT> by default minimises the function we pass to it. However, in our case we need to find the maximum of our likelihood function. To yield the estimates, that maximise our function we can just ask <TT>optimx()</TT> to minimise the negative of our likelihood. For more information on the setting up the likelihood function for <TT>optimx()</TT> or <TT>optim()</TT> please take a look at [this](https://www.joshua-entrop.com/post/optim_linear_reg/) earlier blog post.
+The next step now is to write our likelihood function as a function in R, which can be maximised by <TT>optimx()</TT>. Please keep in mind, that <TT>optimx()</TT> by default minimises the function we pass to it. However, in our case we need to find the maximum of our likelihood function. To yield the estimates, that maximise our function we can just ask <TT>optimx()</TT> to minimise the negative of our likelihood. For more information on setting up the likelihood function for <TT>optimx()</TT> or <TT>optim()</TT> please take a look at [this](https://www.joshua-entrop.com/post/optim_linear_reg/) earlier blog post.
 
 Lets set up our likelihood function in R.
 
@@ -94,7 +94,6 @@ Given these gradient equations we can now define our gradient function in R. For
 
 ```{R}
 # 4. Define fradient function for logistic regression model -------------------
-# (see applied logistic regression)
 negll.grad <- function(par){
   
   #Extract guesses for alpha and beta1
@@ -140,7 +139,7 @@ Looks like our gradient functions does a good job. Now that we have all the func
 The output of <TT>optimx()</TT> provides us with estimates for our coefficients and information regarding whether the optimisation algorithm converged (<TT>convcode == 0</TT>) besides the maximum value of the negative log likelihood obtained by the different algorithms. Hence, it is useful to sort the results by <TT>convcode</TT> and <TT>value</TT>.
 
 ```{R, warning = FALSE}
-# 4. Find minimum of log-likelihood function ----------------------------------
+# 5. Find minimum of log-likelihood function ----------------------------------
 
 # Passing names to the values in the par vector improves readability of results
 opt <- optimx(par = c(alpha = 0, beta_female = 0, beta_age = 0), 
@@ -159,12 +158,12 @@ summary(opt, order = "value") %>%
 The summary of our <TT>optimx()</TT> call shows, that the <TT>nlminb</TT> algorithm yielded the best result. Lets see if this result is equal to the results we will get, if we use <TT>flexsurvreg</TT> from the <TT>{flexsurv}</TT> package to fit our desired model.
 
 ```{R, warning = FALSE}
-# 5. Estimate regression coeficents using glm ---------------------------------
+# 6. Estimate regression coeficents using glm ---------------------------------
 pois_model <- flexsurvreg(Surv(time, status_n == 1) ~ female + age, 
                           data = lung,
                           dist = "exp")
 
-# 6. Comparing results from optimx and glm ------------------------------------
+# 7. Comparing results from optimx and glm ------------------------------------
 pois_results <- unname(coef(pois_model))
 coef_opt <- coef(opt)
 
@@ -194,7 +193,7 @@ However, the result obtained with <TT>flexsurvreg()</TT> provided us with estima
 Let's obtain the SEs for our model by using the results from our <TT>optimx()</TT> call and compare them with the SEs obtained by <TT>flexsurvreg()</TT>.
 
 ```{R}
-# 7. Estimate the standard error ----------------------------------------------
+# 8. Estimate the standard error ----------------------------------------------
 
 #Extract hessian matrix for Rcgmin optimisation
 hessian_m <- attributes(opt)$details["nlminb", "nhatend"][[1]]
@@ -212,10 +211,10 @@ ses <- data.frame(se_nlminb = prop_se,
 all.equal(ses[,"se_nlminb"], ses[, "se_felxsurvreg"])
 ```
 
-Looks like we got nearly equal results. Let us now use these information an estimate the 95% confidence intervals (CIs) for our estimates.
+Looks like we got nearly equal results. Let us now use these information and estimate the 95% confidence intervals (CIs) for our estimates.
 
 ```{R}
-# 8. Estimate 95%CIs using estimation of SE -----------------------------------
+# 9. Estimate 95%CIs using estimation of SE -----------------------------------
 
 # Extracting estimates from Rcgmin optimisaiton
 coef_test <- coef(opt)["nlminb",]
@@ -234,9 +233,9 @@ data.frame(Estimate = coef_test,
 One usual way to plot the results of our estimation is plotting the survival function $S(t)$. Since, uncertainty is important I also want to plot the CI for our survival function. To obtain estimates for the SE of the survival function $S(t)$ is a little bit more complicated. However, the amazing <TT>deltaMethod()</TT> function included in the <TT>{car}</TT> package makes it fairly easy to obtain estimates for the SEs. We just need to provide <TT>deltaMethod()</TT> with a vector of our coefficients, our covariance matrix and the computation for which we would like to obtain the SEs. 
 
 ```{R}
-# 9. Plot survival curve with 95%-CI ------------------------------------------
+# 10. Plot survival curve with 95%-CI -----------------------------------------
 
-# 9.1 Use Delta Method to compute CIs across time of follow-up ================
+# 10.1 Use Delta Method to compute CIs across time of follow-up ===============
 
 # Get coefficents for nlminb optimisation
 nlminb_coef <- coef(opt)["nlminb", ]
@@ -260,7 +259,7 @@ surv_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
 We can now use these information to plot our survival curve $S(t)$ together with a grey shaded area that indicates the CIs for our survival function.
 
 ```{R}
-# 9.2 Plot survival curve with CIs ============================================
+# 10.2 Plot survival curve with CIs ===========================================
 plot(surv_optim_female$time,
      surv_optim_female$estimate,
      ylim = c(0, 1),
@@ -277,7 +276,6 @@ lines(surv_optim_female$time,
 legend(0, 0.15,
        fill = "grey",
        "95% CI")
-
 ```
 
-To sum it up, in this blog post we learned how to fit a Possion regression model using the log likelihood function in R instead of going the usual way of calling <TT>survreg()</TT> or <TT>flexsurvreg()</TT>. I think doing this is a good way of gaining an deeper understanding of how estimates for regression models are obtained. In my next post I will take this a step further and show how we can fit a Weibull regression model in R using the log likelihood function in combination with <TT>optimx()</TT>.
+To sum it up, in this blog post we learned how to fit a Possion regression model using the log likelihood function in R instead of going the usual way of calling <TT>survreg()</TT> or <TT>flexsurvreg()</TT>. I think doing this is a good way of gaining a deeper understanding of how estimates for regression models are obtained. In my next post I will take this a step further and show how we can fit a Weibull regression model in R using the log likelihood function in combination with <TT>optimx()</TT>.
