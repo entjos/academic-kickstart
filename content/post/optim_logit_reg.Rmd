@@ -45,7 +45,7 @@ Where $\pi$ is defined using the sigmoid function as
 
 $$ P(Y|x_1, x_2) = \pi = \frac{\exp(\alpha + \beta_1  x_1 + \beta_2  x_2)}{1 + \exp(\alpha + \beta_1  x_1 + \beta_2  x_2)}. $$
 
-For the optimisation in R we need to define the log-likelihood function as a function in <TT>R</TT>. Additionally, we need to add the constrain $0 < \pi < 1$ to our like-likelihood function, since we are interested in a probability $\pi$ which needs to be in the range between $0$ and $1$. We can use an <TT>if</TT> statement in <TT>R</TT> to include our constrain to our R function. For all parameter values that return a value of $\pi$ that is out of the bounds, we set the value to a very high number, for instance $10^{200}$. Using these high numbers for values outside the bounds, the optimisation algorithm will dismiss these parameter values from our solutions. Note that we calculate <TT>-sum()</TT>, since we want to find the minimum of the log-likelihood function.
+For the optimisation in R we need to define the log-likelihood function as a function in <TT>R</TT>. Additionally, we need to add the constrain $0 < \pi < 1$ to our like-likelihood function, since we are interested in a probability $\pi$ which needs to be in the range between $0$ and $1$. We can use an <TT>if</TT> statement in <TT>R</TT> to include our constrain to our R function. For all parameter values that return a value of $\pi$ that is out of the bounds, we set the value to a very high number, for instance $10^{200}$. Using these high numbers for values outside the bounds, the optimisation algorithm will dismiss these parameter values from our solutions. Note that we calculate <TT>-sum()</TT>, since we want to find the maximum of the log-likelihood function.
 
 ```{R, warning=FALSE}
 # 3. Define log-likelihood function for logistic regression model -------------
@@ -143,10 +143,10 @@ numgrad <- grad(x = c(0, 0, 0), func = negll)
 all.equal(mygrad, numgrad)
 ```
 
-We see, that the results from our analytic gradient function are identical to the results using the <TT>grad()</TT> function. So we can proceed and use the <TT>optimx()</TT> function to find the minimum of our log-likelihood function. As a first guess we use $0$ as initial value for all unknown parameters.
+We see, that the results from our analytic gradient function are identical to the results using the <TT>grad()</TT> function. So we can proceed and use the <TT>optimx()</TT> function to find the maximum of our log-likelihood function. As a first guess we use $0$ as initial value for all unknown parameters.
 
 ```{R, warning=FALSE}
-# 4. Find minimum of log-likelihood function ----------------------------------
+# 4. Find maximum of log-likelihood function ----------------------------------
 opt <- optimx(par = c(0, 0, 0), negll, 
               gr = negll.grad, 
               control = list(trace = 0, all.methods = TRUE))
