@@ -1,0 +1,206 @@
+###############################################################################
+# Title: Optimisation of a Possion survival model in R
+# Date:  2020-07-22
+#
+# Author: Joshua P. Entrop
+# Website: joshua-entrop.com
+###############################################################################
+
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(flexsurv)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+require(tibble)
+require(car)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung <- as.data.frame(survival::lung)
+
+#Recode dichotomous vairables
+lung$female <- ifelse(lung$sex == 2, 1, 0)
+lung$status_n <- ifelse(lung$status == 2, 1, 0)
+
+# 3. Define log-likelihood function for Poisson regression model --------------
+negll <- function(par){
+
+  #Extract guesses for alpha, beta1 and beta2
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+
+  #Calculate lambda
+  lambda <- exp(alpha + beta1 * x1 + beta2 * x2)
+
+  #Estimate negetive log likelihood value
+  val <- -sum(d * log(lambda) - lambda * t)
+
+  return(val)
+}
+
+# 4. Define gradient function for Poisson regression model -------------------
+negll.grad <- function(par){
+
+  #Extract guesses for alpha and beta1
+  alpha <- par[1]
+  beta1 <- par[2]
+  beta2 <- par[3]
+
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+
+  #Calculate pi and xb
+  lambda <- exp(alpha + beta1 * x1 + beta2 * x2)
+
+  #Calculate gradients for alpha and beta1
+  gg[1] <- -sum(d - lambda * t)
+  gg[2] <- -sum(d * x1 - lambda * x1 * t)
+  gg[3] <- -sum(d * x2 - lambda * x2 * t)
+
+  return(gg)
+}
+
+# 4.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 0, 0, 0
+mygrad <- negll.grad(c(0, 0, 0))
+numgrad <- grad(x = c(0, 0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+
+# 5. Find maximum of log-likelihood function ----------------------------------
+
+# Passing names to the values in the par vector improves readability of results
+opt <- optimx(par = c(alpha = 0, beta_female = 0, beta_age = 0),
+              fn = negll,
+              gr = negll.grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+# Show results for optimisation alogrithms, that convergered (convcode == 0)
+summary(opt, order = "value") %>%
+  rownames_to_column("algorithm") %>%
+  filter(convcode == 0) %>%
+  select(algorithm, alpha, beta_female, beta_age, value)
+
+# 6. Estimate regression coeficents using flexsurvreg -------------------------
+pois_model <- flexsurvreg(Surv(time, status_n == 1) ~ female + age,
+                          data = lung,
+                          dist = "exp")
+
+# 7. Comparing results from optimx and flexsurvreg ----------------------------
+pois_results <- unname(coef(pois_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+
+  opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+
+  mle_pois1 <- (coef_opt[i, 1] - pois_results[1])
+  mle_pois2 <- (coef_opt[i, 2] - pois_results[2])
+  mle_pois3 <- (coef_opt[i, 3] - pois_results[3])
+
+  mean_dif <- mean(mle_pois1, mle_pois2, mle_pois3, na.rm = TRUE)
+
+  data.frame(opt_name, mean_dif)
+
+}) %>%
+  bind_rows() %>%
+  filter(!is.na(mean_dif)) %>%
+  mutate(mean_dif = abs(mean_dif)) %>%
+  arrange(mean_dif)
+
+# 8. Estimate the standard error ----------------------------------------------
+
+#Extract hessian matrix for nlminb optimisation
+hessian_m <- attributes(opt)$details["nlminb", "nhatend"][[1]]
+
+# Estimate SE based on hession matrix
+fisher_info <- solve(hessian_m)
+prop_se  <- sqrt(diag(fisher_info))
+
+# Compare the estimated SE from our model with the one from the flexsurv model
+# Note use res.t to get the estimates on the reale scale without transformaiton
+ses <- data.frame(se_nlminb = prop_se,
+                  se_felxsurvreg = pois_model$res.t[, "se"]) %>%
+  print()
+
+all.equal(ses[, "se_nlminb"], ses[, "se_felxsurvreg"])
+
+# 9. Estimate 95%CIs using estimation of SE -----------------------------------
+
+# Extracting estimates from nlminb optimisaiton
+coef_test <- coef(opt)["nlminb",]
+
+# Compute 95%CIs
+upper <- coef_test + 1.96 * prop_se
+lower <- coef_test - 1.96 * prop_se
+
+# Print 95%CIs
+data.frame(Estimate = coef_test,
+           CI_lower = lower,
+           CI_upper = upper,
+           se       = prop_se)
+
+# 10. Plot survival curve with 95%-CI -----------------------------------------
+
+# 10.1 Use Delta Method to compute CIs across time of follow-up ===============
+
+# Get coefficents for nlminb optimisation
+nlminb_coef <- coef(opt)["nlminb", ]
+
+# Compute CIs for a 60 year old female across follow-up time
+surv_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+
+  g <- paste("exp(-exp(alpha + beta_female + 60 * beta_age) *", t, ")")
+
+  fit <- deltaMethod(nlminb_coef, g, solve(hessian_m))
+
+  data.frame(time     = t,
+             estimate = fit[, "Estimate"],
+             ci_low   = fit[, "2.5 %"],
+             ci_up    = fit[, "97.5 %"])
+
+}) %>%
+  bind_rows()
+
+# 10.2 Plot survival curve with CIs ===========================================
+plot(surv_optim_female$time,
+     surv_optim_female$estimate,
+     ylim = c(0, 1),
+     type = "n",
+     xlab = "Time in Days",
+     ylab = "S(t)",
+     main = "Survival after lung cancer \n for 60 year old females")
+polygon(c(surv_optim_female$time, rev(surv_optim_female$time)),
+        c(surv_optim_female$ci_low, rev(surv_optim_female$ci_up)),
+        border = NA,
+        col = "grey")
+lines(surv_optim_female$time,
+      surv_optim_female$estimate)
+legend(0, 0.15,
+       fill = "grey",
+       "95% CI")
+
+# /////////////////////////////////////////////////////////////////////////////
+# END OF R-FILE
