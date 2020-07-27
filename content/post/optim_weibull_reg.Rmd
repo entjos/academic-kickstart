@@ -1,0 +1,58 @@
+---
+title: "Optimisation of a Weibull survival model using Optimx() in R"
+author: "Joshua Philipp Entrop"
+date: '2020-07-22'
+output: html_document
+categories: [Optimisation, R]
+tags: [R, survival analysis, manual optimisation]
+draft: TRUE
+---
+
+In this blog post we will optimise a Weibull regression model by maximising its likelihood function using <TT>optimx()</TT> from the <TT>{optimx}</TT> package in R. In my previouse blog post I showed how to optimise a Poisson regression model in the same manner. Optimising a Possion and Weibull survival model using the likelihood function is is quiet similar. Hence, if you have any difficulties following this blog post, I would recommend you to read my previouse blog post on optimising a Psisson regression model first. You can my previouse blog post [here](https://www.joshua-entrop.com/post/optim_pois_reg/). Please not, that you can download the <TT>R</TT> code that we will use throught this post [here](https://www.joshua-entrop.com/rcode/optim_weibull_reg.txt).
+
+As in my previouse blog post, we will use the lung cancer data set included in the <TT>{survival}</TT> package as example for this post. For more information on this data set please take a look at the help file <TT>?survival::lung</TT> Specifically, we will model the survival of lung cancer patients in this data set by sex and age. This time we will use a Weibull regression model instead of a Poisson regression model to analyse the association between age, sex and survival of lung cancer patients.
+
+The general suvival function of a Weibull regression model can be specified as
+
+$$ S(t) = \exp(\lambda t ^ \gamma). $$
+
+By introducing the exponent $\gamma$ in the term below, we allow the hazard to change over time. Hence, we do not need to assume  a constant hazard function across time of follow up. Just as a reminder in the Possion regression model our hazard function was just equal to $\lambda$. In case of a Weibull regression model our hazard function is
+
+$$ h(t) = \gamma \lambda t ^ {\gamma -1} $$
+
+where
+
+$$ \lambda = \exp(\alpha + \beta_1  x_{female} + \beta_2  x_{age}). $$
+
+Using this more complex hazard function we can fit changes in the hazard across time of follow up.
+
+So now lets get started with loading the data set and setting up the variables.
+
+```{r, warning = FALSE, message = FALSE}
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(flexsurv)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+require(tibble)
+require(car)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung <- as.data.frame(survival::lung)
+
+#Recode dichotomous vairables
+lung$female <- ifelse(lung$sex == 2, 1, 0)s
+lung$status_n <- ifelse(lung$status == 2, 1, 0)
+```
+
+If we now want to use the likelihood function to fit our Weibull regression model we first need to specify our likelihood function. The general liklihood function for survival model can be written as
+
+$$ 
