@@ -10,12 +10,12 @@ authors:
 superuser: true
 
 # Role/position
-role: MMSc in Epidemiology
+role: PhD Student, MMSc in Epidemiology
 
 # Organizations/Affiliations
 organizations:
 - name: Karolinska Insitutet
-  url: ""
+  url: "https://ki.se/"
 
 # Short bio (displayed in user profile at end of posts)
 bio: Passionate about health data.
@@ -68,6 +68,6 @@ user_groups:
 - Visitors
 ---
 
-I am an epidemiologist with a passion for health data and statistical analyses. My research interests are within applied biostatistics and clinical epidemiology. I am interested in statistical and methodological challenges that come along with a variety of research topics. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
+I am a [PhD student at Karolinska Institutet]("https://staff.ki.se/people/josent") with a passion for health data and statistical analyses. At Karolinska Institutet I am working in the research group on [cancer epidemiology](https://ki.se/en/meds/kep-cancer-epidemiology-group) within the department of medicine. My research interests are within applied biostatistics and clinical epidemiology. I am interested in statistical and methodological challenges that come along with analysing registry and survival data. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
 
 All my blog posts on R are also kindly shared on the [R-bloggers](https://www.r-bloggers.com) website.
