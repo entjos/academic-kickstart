@@ -74,6 +74,9 @@ negll.grad <- function(par){
   n <- length(par[1])
   gg <- as.vector(rep(0, n))
 
+  #Calculate lambda and gamma
+  lambda <- (alpha + beta1 * x1 + beta2 * x2)
+
   #Calculate gradient functions
   gg[1] <- -sum((d * log(t) -
                    t ^ exp(gamma) * log(t) * exp(lambda)) * exp(gamma) + d)
