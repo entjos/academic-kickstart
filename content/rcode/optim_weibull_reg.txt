@@ -1,0 +1,266 @@
+###############################################################################
+# Title: Optimisation of a Weibull Regression Model
+# Date: 2020-09-28
+#
+# Author: Joshua P. Entrop
+# Website: joshua-entrop.com
+###############################################################################
+
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(flexsurv)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+require(tibble)
+require(car)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung <- as.data.frame(survival::lung)
+
+#Recode dichotomous vairables
+lung$female   <- ifelse(lung$sex == 2, 1, 0)
+lung$status_n <- ifelse(lung$status == 2, 1, 0)
+
+# 3. Define log-likelihood function for Weibull regression model --------------
+negll <- function(par){
+
+  #Extract guesses for alpha, gamma, beta1 and beta2
+  gamma <- par[1]
+  alpha <- par[2]
+  beta1 <- par[3]
+  beta2 <- par[4]
+
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+
+  #Calculate lambda and gamma
+  lambda <- (alpha + beta1 * x1 + beta2 * x2)
+  egamma <- exp(gamma)
+
+  #Estimate negetive log likelihood value
+  val <- -sum(d * (log(egamma * t ^ (egamma - 1)) + lambda) -
+                exp(lambda) * t ^ egamma)
+
+  return(val)
+}
+
+# 4. Define gradient function for Poisson regression model --------------------
+negll.grad <- function(par){
+
+  #Extract guesses for alpha, gamma, beta1 and beta2
+  gamma <- par[1]
+  alpha <- par[2]
+  beta1 <- par[3]
+  beta2 <- par[4]
+
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+
+  #Calculate gradient functions
+  gg[1] <- -sum((d * log(t) -
+                   t ^ exp(gamma) * log(t) * exp(lambda)) * exp(gamma) + d)
+
+  gg[2] <- -sum(d - exp(lambda) * t ^ exp(gamma))
+  gg[3] <- -sum(d * x1 - exp(lambda) * x1 * t ^ exp(gamma))
+  gg[4] <- -sum(d * x2 - exp(lambda) * x2 * t ^ exp(gamma))
+
+  return(gg)
+}
+
+# 4.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 1, 0, 0, 0
+mygrad <- negll.grad(c(1, 0, 0, 0))
+numgrad <- grad(x = c(1, 0, 0, 0), func = negll)
+
+mygrad
+numgrad
+all.equal(mygrad, numgrad)
+
+# 5. Find minimum of log-likelihood function ----------------------------------
+# Passing names to the values in the par vector improves readability of results
+opt <- optimx(par = c(gamma = 1, alpha = 0, beta_female = 0, beta_age = 0),
+              fn = negll,
+              gr = negll.grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+# Show results for optimisation alogrithms, that convergered (convcode == 0)
+summary(opt, order = "value") %>%
+  rownames_to_column("algorithm") %>%
+  filter(convcode == 0) %>%
+  select(algorithm, gamma, alpha, beta_female, beta_age, value)
+
+# 6. Estimate regression coeficents using flexsurvreg -------------------------
+weibull_model <- flexsurvreg(Surv(time, status_n == 1) ~ female + age,
+                          data = lung,
+                          dist = "weibullph")
+
+# 7. Comparing results from optimx and glm ------------------------------------
+weibull_results <- unname(coef(weibull_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+
+  opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+
+  mle_weibl1 <- (coef_opt[i, 1] - weibull_results[1])
+  mle_weibl2 <- (coef_opt[i, 2] - weibull_results[2])
+  mle_weibl3 <- (coef_opt[i, 3] - weibull_results[3])
+  mle_weibl4 <- (coef_opt[i, 4] - weibull_results[4])
+
+  mean_dif <- mean(mle_weibl1, mle_weibl2, mle_weibl3, mle_weibl4,
+                   na.rm = TRUE)
+
+  data.frame(opt_name, mean_dif)
+
+}) %>%
+  bind_rows() %>%
+  filter(!is.na(mean_dif)) %>%
+  mutate(mean_dif = abs(mean_dif)) %>%
+  arrange(mean_dif)
+
+# 8. Estimate the standard error ----------------------------------------------
+
+#Extract hessian matrix for Newuoa optimisation
+hessian_m <- attributes(opt)$details["newuoa", "nhatend"][[1]]
+
+# Estimate se based on hession matrix
+fisher_info <- solve(hessian_m)
+prop_se  <- sqrt(diag(fisher_info))
+
+# Compare the estimated se from our model with the one from the flexsurv model
+# Note use res.t to get the estimates on the reale scale without transformaiton
+ses <- data.frame(se_newuoa = prop_se,
+                  se_felxsurvreg = weibull_model$res.t[, "se"]) %>%
+  print()
+
+all.equal(ses[,"se_newuoa"], ses[, "se_felxsurvreg"])
+
+# 9. Estimate 95%CIs using estimation of SE -----------------------------------
+
+# Extracting estimates from Newuoa optimisaiton
+coef_test <- coef(opt)["newuoa",]
+
+# Compute 95%CIs
+upper <- coef_test + 1.96 * prop_se
+lower <- coef_test - 1.96 * prop_se
+
+# Print 95%CIs
+data.frame(Estimate = coef_test,
+           CI_lower = lower,
+           CI_upper = upper,
+           se       = prop_se)
+
+# 10. Plot survival curve with 95% CI -----------------------------------------
+
+# 10.1 Use Delta Method to compute CIs across time of follow-up ===============
+
+# Get coefficents for newuoa optimisation
+newuoa_coef <- coef(opt)["newuoa", ]
+
+# Compute CIs for a 60 year of female across time
+surv_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+
+  g <- paste("exp(-exp(alpha + beta_female + 60 * beta_age) *", t,
+             "^ exp(gamma))")
+
+  fit <- deltaMethod(newuoa_coef, g, solve(hessian_m))
+
+  data.frame(time     = t,
+             estimate = fit[, "Estimate"],
+             ci_low   = fit[, "2.5 %"],
+             ci_up    = fit[, "97.5 %"])
+
+}) %>%
+  bind_rows()
+
+# 10.2 Plot survival curve with CIs ===========================================
+plot(surv_optim_female$time,
+     surv_optim_female$estimate,
+     ylim = c(0, 1),
+     type = "n",
+     xlab = "Time in Days",
+     ylab = "S(t)",
+     main = "Survival after lung cancer for 60 year old females")
+polygon(c(surv_optim_female$time, rev(surv_optim_female$time)),
+        c(surv_optim_female$ci_low, rev(surv_optim_female$ci_up)),
+        border = NA,
+        col = "grey")
+lines(surv_optim_female$time,
+      surv_optim_female$estimate)
+plot(weibull_model, type = "survival",
+     newdata = data.frame(age = 60,
+                          female = 1),
+     add = TRUE)
+legend(0, 0.3,
+       fill = "grey",
+       "95% CI")
+
+# 11. Plot hazard curve with 95% CI -------------------------------------------
+
+# 10.1 Use Delta Method to compute CIs across time of follow-up ===============
+
+# Get coefficents for newuoa optimisation
+newuoa_coef <- coef(opt)["newuoa", ]
+
+# Compute CIs for a 60 year of female across time
+haz_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+
+  g <- paste("exp(gamma) * exp(alpha + beta_female + 60 * beta_age) *", t,
+             "^ (exp(gamma) - 1)")
+
+  fit <- deltaMethod(newuoa_coef, g, solve(hessian_m))
+
+  data.frame(time     = t,
+             estimate = fit[, "Estimate"],
+             ci_low   = fit[, "2.5 %"],
+             ci_up    = fit[, "97.5 %"])
+
+}) %>%
+  bind_rows()
+
+# 10.2 Plot hazard curve with CIs =============================================
+plot(haz_optim_female$time,
+     haz_optim_female$estimate,
+     ylim = c(0, 0.005),
+     type = "n",
+     xlab = "Time in Days",
+     ylab = "h(t)",
+     main = "Hazard of death after lung cancer for 60 year old females")
+polygon(c(haz_optim_female$time, rev(haz_optim_female$time)),
+        c(haz_optim_female$ci_low, rev(haz_optim_female$ci_up)),
+        border = NA,
+        col = "grey")
+plot(weibull_model, type = "hazard",
+     newdata = data.frame(age = 60,
+                          female = 1),
+     add = TRUE)
+lines(haz_optim_female$time,
+      haz_optim_female$estimate)
+legend("topleft",
+       inset = 0.01,
+       cex = 0.8,
+       fill = c("black", "red"),
+       legend = c("Optimix()", "Flexregsurv()"),
+       box.lty = 0)
+
+# /////////////////////////////////////////////////////////////////////////////
+# END OF R FILE
