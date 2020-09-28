@@ -1,0 +1,328 @@
+---
+title: "Optimisation of a Weibull survival model using Optimx() in R"
+author: "Joshua Philipp Entrop"
+date: '2020-09-29'
+output: html_document
+categories: [Optimisation, R]
+tags: [R, survival analysis, manual optimisation]
+draft: FALSE
+---
+
+
+
+<p>In this blog post we will optimise a Weibull regression model by maximising its likelihood function using <TT>optimx()</TT> from the <TT>{optimx}</TT> package in R. In my previous blog post I showed how to optimise a Poisson regression model in the same manner. Optimising a Poisson and Weibull survival model using the likelihood function is quite similar. Hence, if you have any difficulties following this blog post, I would recommend you to read my previous blog post on optimising a Poisson regression model first. You can find my previous blog post <a href="https://www.joshua-entrop.com/post/optim_pois_reg/">here</a>. Please note, that you can download the <TT>R</TT> code that we will use throughout this post <a href="https://www.joshua-entrop.com/rcode/optim_weibull_reg.txt">here</a>.</p>
+<p>As in my previous blog posts, we will use the lung cancer data set included in the <TT>{survival}</TT> package as example for this post. For more information on this data set please take a look at the help file <TT>?survival::lung</TT> Specifically, we will model the survival of lung cancer patients in this data set by sex and age. This time we will use a Weibull regression model instead of a Poisson regression model to analyse the association between age, sex and survival of lung cancer patients.</p>
+<p>The general survival function of a Weibull regression model can be specified as</p>
+<p><span class="math display">\[ S(t) = \exp(\lambda t ^ \gamma). \]</span></p>
+<p>By introducing the exponent <span class="math inline">\(\gamma\)</span> in the term below, we allow the hazard to change over time. Hence, we do not need to assume a constant hazard function across time of follow up. Just as a reminder in the Possion regression model our hazard function was just equal to <span class="math inline">\(\lambda\)</span>. In case of a Weibull regression model our hazard function is</p>
+<p><span class="math display">\[ h(t) = \gamma \lambda t ^ {\gamma -1} \]</span></p>
+<p>where</p>
+<p><span class="math display">\[ \lambda = \exp(\alpha + \beta_1  x_{female} + \beta_2  x_{age}). \]</span></p>
+<p>Using this more complex hazard function we can fit changes in the hazard across time of follow up.</p>
+<p>So now let’s get started with loading the data set and setting up the variables.</p>
+<pre class="r"><code># 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(flexsurv)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+require(tibble)
+require(car)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung &lt;- as.data.frame(survival::lung)
+
+#Recode dichotomous vairables
+lung$female &lt;- ifelse(lung$sex == 2, 1, 0)
+lung$status_n &lt;- ifelse(lung$status == 2, 1, 0)</code></pre>
+<p>If we now want to use the likelihood function to fit our Weibull regression model we first need to specify our likelihood function. The general likelihood function for survival model can be written as</p>
+<p><span class="math display">\[ \ln L_i = d_i \ln h(t_i) + \ln S(t_i). \]</span></p>
+<p>By substituting our previous defined hazard and survival function we get</p>
+<p><span class="math display">\[ \ln L = d \ln(\gamma \lambda t ^ {\gamma - 1}) + \exp(\lambda) t ^ \gamma \]</span></p>
+<p>for the log likelihood function of our Weibull model. To find the estimates of our Weibull model that best fit our data, we need to find the maximum of this function. Hence, the next step is to implement this function in <TT>R</TT> so that we can use it for our <TT>optimx()</TT> call.</p>
+<pre class="r"><code># 3. Define log-likelihood function for Weibull regression model --------------
+negll &lt;- function(par){
+  
+  #Extract guesses for alpha, gamma, beta1 and beta2
+  gamma &lt;- par[1]
+  alpha &lt;- par[2]
+  beta1 &lt;- par[3]
+  beta2 &lt;- par[4]
+  
+  #Define dependent and independent variables
+  t  &lt;- lung$time
+  d  &lt;- lung$status_n
+  x1 &lt;- lung$female
+  x2 &lt;- lung$age
+  
+  #Calculate lambda and gamma
+  lambda &lt;- (alpha + beta1 * x1 + beta2 * x2)
+  egamma &lt;- exp(gamma)
+  
+  #Estimate negetive log likelihood value
+  val &lt;- -sum(d * (log(egamma * t ^ (egamma - 1)) + lambda) - 
+                exp(lambda) * t ^ egamma)
+  
+  return(val)
+}</code></pre>
+<p>Additionally, we can pass the analytical gradient function of our likelihood function to our <TT>optimx()</TT> call to improve our estimates. After partially deriving our log likelihood function <span class="math inline">\(\ln L_i\)</span> for <span class="math inline">\(\alpha\)</span>, <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\beta_i\)</span>, we yield the following equations for the gradient of <span class="math inline">\(\ln L_i\)</span>.</p>
+<p><span class="math display">\[ 
+\sum d_i - \exp(\lambda_i) t_i ^ {\exp(\gamma_i)} = 0 
+\]</span></p>
+<p><span class="math display">\[
+\sum (d_i \ln(t_i) - t_i \exp(\gamma_i) \ln(t_i) \exp(\lambda_i)) \exp(\gamma_i) + d_i = 0 
+\]</span>
+<span class="math display">\[
+\sum d_i * x_{ij} - \exp(\lambda_i) x_{ij} t_i ^ {\exp(\gamma_i)} = 0
+\]</span></p>
+<p>Using these equations we get the following function for our gradient in <TT>R</TT>.</p>
+<pre class="r"><code># 4. Define gradient function for Weibull regression model --------------------
+negll.grad &lt;- function(par){
+  
+  #Extract guesses for alpha, gamma, beta1 and beta2
+  gamma &lt;- par[1]
+  alpha &lt;- par[2]
+  beta1 &lt;- par[3]
+  beta2 &lt;- par[4]
+  
+  #Define dependent and independent variables
+  t  &lt;- lung$time
+  d  &lt;- lung$status_n
+  x1 &lt;- lung$female
+  x2 &lt;- lung$age
+  
+  #Create output vector
+  n &lt;- length(par[1])
+  gg &lt;- as.vector(rep(0, n))
+  
+  #Calculate lambda
+  lambda &lt;- (alpha + beta1 * x1 + beta2 * x2)
+  
+  #Calculate partial gradient functions
+  gg[1] &lt;- -sum((d * log(t) - 
+                   t ^ exp(gamma) * log(t) * exp(lambda)) * exp(gamma) + d)
+  
+  gg[2] &lt;- -sum(d - exp(lambda) * t ^ exp(gamma))
+  gg[3] &lt;- -sum(d * x1 - exp(lambda) * x1 * t ^ exp(gamma))
+  gg[4] &lt;- -sum(d * x2 - exp(lambda) * x2 * t ^ exp(gamma))
+  
+  return(gg)
+}</code></pre>
+<p>Let’s do some quality check on our gradient functions. For this we compare the estimates of our gradient functions with the approximation from the <TT>numDeriv::numgrad()</TT> function.</p>
+<pre class="r"><code># 4.1 Compare gradient functiona with numeric approximation of gradient =======
+# compare gradient at 1, 0, 0, 0
+mygrad &lt;- negll.grad(c(1, 0, 0, 0))
+numgrad &lt;- grad(x = c(1, 0, 0, 0), func = negll)
+
+all.equal(mygrad, numgrad)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>All good, we get the same results. Now is the time to get all functions and data together and pass them to our <TT>optimx()</TT> call to get the maximum likelihood estimates for our Weibull model.</p>
+<pre class="r"><code># 5. Find minimum of log-likelihood function ----------------------------------
+# Passing names to the values in the par vector improves readability of results
+opt &lt;- optimx(par = c(gamma = 1, alpha = 0, beta_female = 0, beta_age = 0), 
+              fn = negll,
+              gr = negll.grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+# Show results for optimisation alogrithms, that convergered (convcode == 0)
+summary(opt, order = &quot;value&quot;) %&gt;%
+  rownames_to_column(&quot;algorithm&quot;) %&gt;% 
+  filter(convcode == 0) %&gt;% 
+  select(algorithm, gamma, alpha, beta_female, beta_age, value)</code></pre>
+<pre><code>##     algorithm         gamma     alpha beta_female     beta_age       value
+## 1      newuoa   0.282294079 -8.828209  -0.5067097   0.01625468    1147.054
+## 2      nlminb   0.282296689 -8.828269  -0.5067118   0.01625527    1147.054
+## 3        BFGS   0.282291577 -8.828211  -0.5067102   0.01625510    1147.054
+## 4      bobyqa   0.282291455 -8.828164  -0.5067134   0.01625432    1147.054
+## 5    L-BFGS-B   0.282257770 -8.828116  -0.5065362   0.01625512    1147.054
+## 6 Nelder-Mead   0.004418373  0.702934  -0.4134191  -0.10870858    1271.990
+## 7         nlm -23.931210572 -1.433331  -0.6337426 -88.76207627  931946.566
+## 8      Rcgmin   1.000000000  0.000000   0.0000000   0.00000000 6629012.776</code></pre>
+<p>According to our table the <TT>newuoa</TT> algorithm from the <TT>{minqa}</TT> package yielded the best estimates. The <TT>newuoa</TT> algorithm was developed to find the minimum of a function without information about the analytical gradient function. Instead the algorithm uses a quadratic approximation of the gradient function to minimise the function of interest. Interestingly, the <TT>newuoa</TT> algorithm yielded a higher likelihood than the <TT>nlminb</TT> algorithm that uses the analytical gradient function.</p>
+<p>Let’s now compare our results with the results from the <TT>flexsurvreg()</TT> function from the <TT>{flexsurv}</TT> package.</p>
+<pre class="r"><code># 6. Estimate regression coeficents using flexsurvreg -------------------------
+weibull_model &lt;- flexsurvreg(Surv(time, status_n == 1) ~ female + age, 
+                          data = lung,
+                          dist = &quot;weibullph&quot;)
+
+# 7. Comparing results from optimx and flexsurvreg ----------------------------
+weibull_results &lt;- unname(coef(weibull_model))
+coef_opt &lt;- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+  
+  opt_name &lt;- attributes(coef_opt)$dimnames[[1]][i]
+  
+  mle_weibl1 &lt;- (coef_opt[i, 1] - weibull_results[1])
+  mle_weibl2 &lt;- (coef_opt[i, 2] - weibull_results[2])
+  mle_weibl3 &lt;- (coef_opt[i, 3] - weibull_results[3])
+  mle_weibl4 &lt;- (coef_opt[i, 4] - weibull_results[4])
+  
+  mean_dif &lt;- mean(mle_weibl1, mle_weibl2, mle_weibl3, mle_weibl4, 
+                   na.rm = TRUE)
+  
+  data.frame(opt_name, mean_dif)
+  
+}) %&gt;% 
+  bind_rows() %&gt;% 
+  filter(!is.na(mean_dif)) %&gt;% 
+  mutate(mean_dif = abs(mean_dif)) %&gt;% 
+  arrange(mean_dif)</code></pre>
+<pre><code>##       opt_name     mean_dif
+## 1       newuoa 1.264708e-06
+## 2       nlminb 1.345317e-06
+## 3         BFGS 3.766647e-06
+## 4       bobyqa 3.888642e-06
+## 5     L-BFGS-B 3.757310e-05
+## 6  Nelder-Mead 2.778770e-01
+## 7       Rcgmin 7.177047e-01
+## 8       Rvmmin 7.177047e-01
+## 9           CG 2.864370e+00
+## 10         nlm 2.421351e+01</code></pre>
+<p>We can see that the differences between our estimates and the estimates we would have gotten if we used <TT>flexsurvreg()</TT> to fit our model, are close to null. At least for the estimates yielded by the <TT>newuoa</TT> algorithm.</p>
+<p>Since we found the point estimates for our Weibull regression, we can now take the next step and calculate confidence intervals (CIs) for our estimates. For this we will use the Hessian matrix of our model. If you cannot follow the code below, please take a look at my <a href="https://www.joshua-entrop.com/post/optim_logit_reg_se/">previouse post</a> where I explained how to compute CIs for estimates of a logistic regression model using the same approach.</p>
+<pre class="r"><code># 8. Estimate the standard error ----------------------------------------------
+
+#Extract hessian matrix for Newuoa optimisation
+hessian_m &lt;- attributes(opt)$details[&quot;newuoa&quot;, &quot;nhatend&quot;][[1]]
+
+# Estimate se based on hession matrix
+fisher_info &lt;- solve(hessian_m)
+prop_se  &lt;- sqrt(diag(fisher_info))
+
+# Compare the estimated se from our model with the one from the flexsurv model
+# Note use res.t to get the estimates on the reale scale without transformaiton
+ses &lt;- data.frame(se_newuoa = prop_se,
+                  se_felxsurvreg = weibull_model$res.t[, &quot;se&quot;]) %&gt;%
+  print()</code></pre>
+<pre><code>##          se_newuoa se_felxsurvreg
+## shape  0.061883266    0.061869493
+## scale  0.777802040    0.777206348
+## female 0.167066129    0.167066105
+## age    0.009188029    0.009170499</code></pre>
+<pre class="r"><code>all.equal(ses[,&quot;se_newuoa&quot;], ses[, &quot;se_felxsurvreg&quot;])</code></pre>
+<pre><code>## [1] &quot;Mean relative difference: 0.0006171813&quot;</code></pre>
+<pre class="r"><code># 9. Estimate 95%CIs using estimation of SE -----------------------------------
+
+# Extracting estimates from Newuoa optimisaiton
+coef_test &lt;- coef(opt)[&quot;newuoa&quot;,]
+
+# Compute 95%CIs
+upper &lt;- coef_test + 1.96 * prop_se
+lower &lt;- coef_test - 1.96 * prop_se
+
+# Print 95%CIs
+data.frame(Estimate = coef_test,
+           CI_lower = lower,
+           CI_upper = upper,
+           se       = prop_se)</code></pre>
+<pre><code>##                Estimate      CI_lower    CI_upper          se
+## gamma        0.28229408   0.161002878  0.40358528 0.061883266
+## alpha       -8.82820947 -10.352701468 -7.30371747 0.777802040
+## beta_female -0.50670974  -0.834159350 -0.17926012 0.167066129
+## beta_age     0.01625468  -0.001753855  0.03426322 0.009188029</code></pre>
+<p>The best way to understand your survival model is plotting its basic functions. So let’s take a look at the survival function (<span class="math inline">\(S(t)\)</span>) of our model.</p>
+<pre class="r"><code># 10. Plot survival curve with 95% CI -----------------------------------------
+
+# 10.1 Use Delta Method to compute CIs across time of follow-up ===============
+
+# Get coefficents for Newuoa optimisation
+newuoa_coef &lt;- coef(opt)[&quot;newuoa&quot;, ]
+
+# Compute CIs for a 60 year of female across time
+surv_optim_female &lt;- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+
+  g &lt;- paste(&quot;exp(-exp(alpha + beta_female + 60 * beta_age) *&quot;, t,
+             &quot;^ exp(gamma))&quot;)
+
+  fit &lt;- deltaMethod(newuoa_coef, g, solve(hessian_m))
+
+  data.frame(time     = t,
+             estimate = fit[, &quot;Estimate&quot;],
+             ci_low   = fit[, &quot;2.5 %&quot;],
+             ci_up    = fit[, &quot;97.5 %&quot;])
+
+}) %&gt;%
+  bind_rows()
+
+# 10.2 Plot survival curve with CIs ===========================================
+plot(surv_optim_female$time,
+     surv_optim_female$estimate,
+     ylim = c(0, 1),
+     type = &quot;n&quot;,
+     xlab = &quot;Time in Days&quot;,
+     ylab = &quot;S(t)&quot;,
+     main = &quot;Survival after lung cancer for 60 year old females&quot;)
+polygon(c(surv_optim_female$time, rev(surv_optim_female$time)),
+        c(surv_optim_female$ci_low, rev(surv_optim_female$ci_up)),
+        border = NA,
+        col = &quot;grey&quot;)
+lines(surv_optim_female$time,
+      surv_optim_female$estimate)
+plot(weibull_model, type = &quot;survival&quot;,
+     newdata = data.frame(age = 60,
+                          female = 1),
+     add = TRUE)
+legend(0, 0.3,
+       fill = &quot;grey&quot;,
+       &quot;95% CI&quot;)</code></pre>
+<p><img src="/post/optim_weibull_reg_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>Additionally, we can also plot our hazard function (<span class="math inline">\(h(t)\)</span>).</p>
+<pre class="r"><code># 11. Plot hazard curve with 95% CI -------------------------------------------
+
+# 10.1 Use Delta Method to compute CIs across time of follow-up ===============
+
+# Get coefficents for Newuoa optimisation
+newuoa_coef &lt;- coef(opt)[&quot;newuoa&quot;, ]
+
+# Compute CIs for a 60 year of female across time
+haz_optim_female &lt;- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+
+  g &lt;- paste(&quot;exp(gamma) * exp(alpha + beta_female + 60 * beta_age) *&quot;, t,
+             &quot;^ (exp(gamma) - 1)&quot;)
+
+  fit &lt;- deltaMethod(newuoa_coef, g, solve(hessian_m))
+
+  data.frame(time     = t,
+             estimate = fit[, &quot;Estimate&quot;],
+             ci_low   = fit[, &quot;2.5 %&quot;],
+             ci_up    = fit[, &quot;97.5 %&quot;])
+
+}) %&gt;%
+  bind_rows()
+
+# 10.2 Plot hazard curve with CIs =============================================
+plot(haz_optim_female$time,
+     haz_optim_female$estimate,
+     ylim = c(0, 0.005),
+     type = &quot;n&quot;,
+     xlab = &quot;Time in Days&quot;,
+     ylab = &quot;h(t)&quot;,
+     main = &quot;Hazard of death after lung cancer for 60 year old females&quot;)
+polygon(c(haz_optim_female$time, rev(haz_optim_female$time)),
+        c(haz_optim_female$ci_low, rev(haz_optim_female$ci_up)),
+        border = NA,
+        col = &quot;grey&quot;)
+plot(weibull_model, type = &quot;hazard&quot;,
+     newdata = data.frame(age = 60,
+                          female = 1),
+     add = TRUE)
+lines(haz_optim_female$time,
+      haz_optim_female$estimate)
+legend(&quot;topleft&quot;,
+       inset = 0.01,
+       cex = 0.8,
+       fill = c(&quot;black&quot;, &quot;red&quot;),
+       legend = c(&quot;Optimix()&quot;, &quot;Flexregsurv()&quot;),
+       box.lty = 0)</code></pre>
+<p><img src="/post/optim_weibull_reg_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Interestingly, we see quite some differences between our estimates for the CI and <TT>flexregsurv()</TT>’s estimates. Unfortunately, I didn’t find a reason for this difference yet. So if you have a guess, please let me know.</p>
+<p>In this post today we fitted a Weibull regression by optimising its likelihood function using the <TT>optimx()</TT> function from the <TT>{optimx}</TT> package. I hope you got some new insides and ideas by reading this post. If you have any comments or suggestions, I would be happy to hear from you via <a href="mailto:jentrop@gmx.de">email</a>, <a href="https://twitter.com/entjos">twitter</a> or <a href="https://www.linkedin.com/in/joshua-entrop/">LinkedIn</a>.</p>
