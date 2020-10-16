@@ -304,7 +304,7 @@ Additionally, we can also plot our hazard function ($h(t)$).
 # Get coefficents for Newuoa optimisation
 newuoa_coef <- coef(opt)["newuoa", ]
 
-# Compute CIs for a 60 year of female across time
+# Compute CIs for a 60 year old female across time
 haz_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
 
   g <- paste("exp(gamma) * exp(alpha + beta_female + 60 * beta_age) *", t,
