@@ -1,0 +1,346 @@
+---
+title: "Comparing the confidence intervals of a Weibull model estimated with flexsurvreg() and optimx()"
+author: "Joshua Philipp Entrop"
+date: '2020-10-13'
+output: html_document
+categories: [Optimisation, R]
+tags: [R, survival analysis, manual optimisation]
+draft: FALSE
+---
+
+This blog post is a follow up on my [previous post](https://www.joshua-entrop.com/post/optim_weibull_reg/) on optimising a Weibull regression model using <TT>optimx()</TT>. This time I'll try to find a solution for the discrepancy between the confidence interval estimates of the Weibull hazard function estimated with <TT>optimx()</TT> and <TT>flexsurvreg()</TT>.
+
+This post begins where my previous one ended. Hence, I suggest you to read my [previous post](https://www.joshua-entrop.com/post/optim_weibull_reg/) before reading this one. Also, I will use the <TT>R</TT> script of my previous post as starting point for this post. You can find the whole plain <TT>R</TT> script used in this post in <TT>.txt</TT> format [here](https://www.joshua-entrop.com/rcode/optim_weibull_reg_follow_up.txt).
+
+```{r include=FALSE}
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(flexsurv)
+require(optimx)
+require(numDeriv)
+require(dplyr)
+require(tibble)
+require(car)
+
+# 2. Loading dataset ----------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung <- as.data.frame(survival::lung)
+
+#Recode dichotomous vairables
+lung$female <- ifelse(lung$sex == 2, 1, 0)
+lung$status_n <- ifelse(lung$status == 2, 1, 0)
+
+# 3. Define log-likelihood function for Weibull regression model --------------
+negll <- function(par){
+  
+  #Extract guesses for alpha, gamma, beta1 and beta2
+  gamma <- par[1]
+  alpha <- par[2]
+  beta1 <- par[3]
+  beta2 <- par[4]
+  
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+  
+  #Calculate lambda and gamma
+  lambda <- (alpha + beta1 * x1 + beta2 * x2)
+  egamma <- exp(gamma)
+  
+  #Estimate negetive log likelihood value
+  val <- -sum(d * (log(egamma * t ^ (egamma - 1)) + lambda) -
+                exp(lambda) * t ^ egamma)
+  
+  return(val)
+}
+
+# 4. Define gradient function for Weibull regression model --------------------
+negll.grad <- function(par){
+  
+  #Extract guesses for alpha, gamma, beta1 and beta2
+  gamma <- par[1]
+  alpha <- par[2]
+  beta1 <- par[3]
+  beta2 <- par[4]
+  
+  #Define dependent and independent variables
+  t  <- lung$time
+  d  <- lung$status_n
+  x1 <- lung$female
+  x2 <- lung$age
+  
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+  
+  #Calculate lambda
+  lambda <- (alpha + beta1 * x1 + beta2 * x2)
+  
+  #Calculate partial gradient functions
+  gg[1] <- -sum((d * log(t) -
+                   t ^ exp(gamma) * log(t) * exp(lambda)) * exp(gamma) + d)
+  
+  gg[2] <- -sum(d - exp(lambda) * t ^ exp(gamma))
+  gg[3] <- -sum(d * x1 - exp(lambda) * x1 * t ^ exp(gamma))
+  gg[4] <- -sum(d * x2 - exp(lambda) * x2 * t ^ exp(gamma))
+  
+  return(gg)
+}
+
+# 4.1 Compare gradient functiona with numeric approximation of gradient =======
+# compare gradient at 1, 0, 0, 0
+mygrad <- negll.grad(c(1, 0, 0, 0))
+numgrad <- grad(x = c(1, 0, 0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+
+# 5. Find minimum of log-likelihood function ----------------------------------
+# Passing names to the values in the par vector improves readability of results
+opt <- optimx(par = c(gamma = 1, alpha = 0, beta_female = 0, beta_age = 0),
+              fn = negll,
+              gr = negll.grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+# Show results for optimisation alogrithms, that convergered (convcode == 0)
+summary(opt, order = "value") %>%
+  rownames_to_column("algorithm") %>%
+  filter(convcode == 0) %>%
+  select(algorithm, gamma, alpha, beta_female, beta_age, value)
+
+
+# 6. Estimate regression coeficents using flexsurvreg -------------------------
+weibull_model <- flexsurvreg(Surv(time, status_n == 1) ~ female + age,
+                             data = lung,
+                             dist = "weibullph")
+
+# 7. Comparing results from optimx and flexsurvreg ----------------------------
+weibull_results <- unname(coef(weibull_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+  
+  opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+  
+  mle_weibl1 <- (coef_opt[i, 1] - weibull_results[1])
+  mle_weibl2 <- (coef_opt[i, 2] - weibull_results[2])
+  mle_weibl3 <- (coef_opt[i, 3] - weibull_results[3])
+  mle_weibl4 <- (coef_opt[i, 4] - weibull_results[4])
+  
+  mean_dif <- mean(mle_weibl1, mle_weibl2, mle_weibl3, mle_weibl4,
+                   na.rm = TRUE)
+  
+  data.frame(opt_name, mean_dif)
+  
+}) %>%
+  bind_rows() %>%
+  filter(!is.na(mean_dif)) %>%
+  mutate(mean_dif = abs(mean_dif)) %>%
+  arrange(mean_dif)
+
+# 8. Estimate the standard error ----------------------------------------------
+
+#Extract hessian matrix for Newuoa optimisation
+hessian_m <- attributes(opt)$details["newuoa", "nhatend"][[1]]
+
+# Estimate se based on hession matrix
+fisher_info <- solve(hessian_m)
+prop_se  <- sqrt(diag(fisher_info))
+
+# Compare the estimated se from our model with the one from the flexsurv model
+# Note use res.t to get the estimates on the reale scale without transformaiton
+ses <- data.frame(se_newuoa = prop_se,
+                  se_felxsurvreg = weibull_model$res.t[, "se"]) %>%
+  print()
+
+all.equal(ses[,"se_newuoa"], ses[, "se_felxsurvreg"])
+
+# 9. Estimate 95%CIs using estimation of SE -----------------------------------
+
+# Extracting estimates from Newuoa optimisaiton
+coef_test <- coef(opt)["newuoa",]
+
+# Compute 95%CIs
+upper <- coef_test + 1.96 * prop_se
+lower <- coef_test - 1.96 * prop_se
+
+# Print 95%CIs
+data.frame(Estimate = coef_test,
+           CI_lower = lower,
+           CI_upper = upper,
+           se       = prop_se)
+
+# 11. Plot hazard curve with 95% CI -------------------------------------------
+
+# 11.1 Use Delta Method to compute CIs across time of follow-up ===============
+
+# Get coefficents for Newuoa optimisation
+newuoa_coef <- coef(opt)["newuoa", ]
+
+# Compute CIs for a 60 year of female across time
+haz_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+  
+  g <- paste("exp(gamma) * exp(alpha + beta_female + 60 * beta_age) *", t,
+             "^ (exp(gamma) - 1)")
+  
+  fit <- deltaMethod(newuoa_coef, g, solve(hessian_m))
+  
+  data.frame(time     = t,
+             estimate = fit[, "Estimate"],
+             ci_low   = fit[, "2.5 %"],
+             ci_up    = fit[, "97.5 %"])
+  
+}) %>%
+  bind_rows()
+```
+
+```{r echo=FALSE}
+# 11.2 Plot hazard curve with CIs =============================================
+plot(haz_optim_female$time,
+     haz_optim_female$estimate,
+     ylim = c(0, 0.005),
+     type = "n",
+     xlab = "Time in Days",
+     ylab = "h(t)",
+     main = "Hazard of death after lung cancer for 60 year old females")
+polygon(c(haz_optim_female$time, rev(haz_optim_female$time)),
+        c(haz_optim_female$ci_low, rev(haz_optim_female$ci_up)),
+        border = NA,
+        col = "grey")
+plot(weibull_model, type = "hazard",
+     newdata = data.frame(age = 60,
+                          female = 1),
+     add = TRUE)
+lines(haz_optim_female$time,
+      haz_optim_female$estimate)
+legend("topleft",
+       inset = 0.01,
+       cex = 0.8,
+       fill = c("black", "red"),
+       legend = c("Optimix()", "flexsurvreg()"),
+       box.lty = 0)
+```
+
+This is the figure where my last post ended. I compared the hazard function $h(t)$ of the Weibull model estimated manually using <TT>optimx()</TT> with the hazard function of an identical model estimated with <TT>flexsurvreg()</TT>. Interestingly, the hazard functions were identical, but there were considerable differences in the estimates of the confidence intervals across follow-up time, as you can see in the figure above. Unfortunately, I couldn't come up with an explanation for this discrepancy. However, I was lucky and got help from [Andrea Discacciati](https://staff.ki.se/people/anddis), a colleague at Karolinska Institutet. He pointed out that the <TT>flexsurvreg()</TT> function from the <TT>{flexsurvreg}</TT> package uses the log-hazard function ($\ln h(t)$) for estimating confidence intervals whereas I used the hazard function ($h(t)$) in my post instead. Working on the log-scale allows to transform the multiplicative components of the hazard function into additive components, since $\ln xy = \ln x + \ln y$. This is usually done to increase the precision of the computation process, since multiplication usually comes with a higher loss in precision compared to summation. Hence, using the hazard function instead of the log-hazard function might lead to the difference in the estimates for the confidence intervals of the hazard functions, that we can see in the figure above.
+
+So let's try to use the log-hazard instead of the hazard for the computation of our survival function together with its confidence intervals. First the hazard function is, as explained in my previous post, defined by
+
+$$
+h(t) = \gamma \lambda t ^{\gamma - 1}.
+$$
+
+Let's then compute the hazard function and the confidence intervals using the hazard function on the identity scale.
+
+```{r message=FALSE, warning=FALSE}
+# 12. Compare h(t) with CIs using identity and log-scale ----------------------
+
+# Get coefficents for Newuoa optimisation
+newuoa_coef <- coef(opt)["newuoa", ]
+
+# 12.1 Estimate h(t) with CIs using hazard function on identity scale =========
+
+# Compute CIs for a 60 year old female across time
+haz_optim_female <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+  
+  g <- paste("exp(gamma) * exp(alpha + beta_female + 60 * beta_age) *", t,
+             "^ (exp(gamma) - 1)")
+  
+  fit <- deltaMethod(newuoa_coef, g, solve(hessian_m))
+  
+  data.frame(time     = t,
+             estimate = fit[, "Estimate"],
+             ci_low   = fit[, "2.5 %"],
+             ci_up    = fit[, "97.5 %"])
+  
+}) %>%
+  bind_rows()
+```
+
+In the next step we need to compute the hazard function and its confidence interval on the log-scale $\ln h(t)$. The log-hazard function can be written as
+
+$$
+\ln h(t) = \ln \gamma + \ln \lambda + \ln t  (\exp(\gamma) - 1).
+$$
+
+Let's use this formula to calculate the confidence interval of the hazard function using the same function as above.
+
+```{r message=FALSE, warning=FALSE}
+# 12.2 Estimate h(t) with CIs using hazard function on log scale ==============
+
+# Compute CIs for a 60 year old female across time
+haz_optim_female_log <- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
+  
+  g <- paste("(gamma) + (alpha + beta_female + 60 * beta_age) +", log(t),
+             "* (exp(gamma) - 1)")
+  
+  fit <- deltaMethod(newuoa_coef, g, solve(hessian_m))
+  
+  data.frame(time     = t,
+             estimate = exp(fit[, "Estimate"]),
+             ci_low   = exp(fit[, "2.5 %"]),
+             ci_up    = exp(fit[, "97.5 %"]))
+  
+}) %>%
+  bind_rows()
+```
+
+We can now compare the confidence intervals obtained by these two different computations by plotting their hazard functions and confidence intervals.
+
+```{r message=FALSE, warning=FALSE}
+# 12.3 Create plot comparing both estimations =================================
+
+par(mfcol = c(1, 2))
+
+# 10.2 Plot hazard curve with CIs =============================================
+
+# create list of both data frames
+
+list_haz_optim_female <- list(haz_optim_female,
+                              haz_optim_female_log)
+
+invisible(
+mapply(df = list(haz_optim_female, haz_optim_female_log),
+       titles = c("Based on hazard function",
+                  "Based on log-hazard function"),
+       FUN = function(df, titles){
+         
+         plot(df$time,
+              df$estimate,
+              ylim = c(0, 0.005),
+              type = "n",
+              xlab = "Time in Days",
+              ylab = "h(t)",
+              main = titles)
+         polygon(c(df$time, rev(df$time)),
+                 c(df$ci_low, rev(df$ci_up)),
+                 border = NA,
+                 col = "grey")
+         plot(weibull_model, type = "hazard",
+              newdata = data.frame(age = 60,
+                                   female = 1),
+              add = TRUE)
+         lines(df$time,
+               df$estimate)
+         legend("topleft",
+                inset = 0.01,
+                cex = 0.8,
+                fill = c("black", "red"),
+                legend = c("Optimix()", "flexsurvreg()"),
+                box.lty = 0)
+       })
+)
+```
+
+In this figure we can see the hazard function and its confidence interval (gray area) for both computation approaches. The estimates yielded by working on the identity scale are shwon on the left and the estimates yieled by working on the log-scale are shown on the right. At the same time we see the estimates yielded by estimating the same model with <TT>flexsurvreg()</TT> (red lines). As we can see, working on the log-scale yielded estimates very much closer to the estimates obtained with <TT>flexsurvreg()</TT> compared to the model using the identity scale.
+
+Hence, it seems as this difference between working on the identity and log-scale for computing the confidence intervals may explain a big part of the discrepancy between the confidence intervals obtained with <TT>flexsurvreg()</TT> and <TT>optimx()</TT>, which we can see in the first figure above. The remaining differences are likely due to the fact, that the <TT>flexsurvreg()</TT> function uses the bootstrap method instead of the delta method to estimate confidence intervals for the hazard function.
+
+In this post we compared the confidence intervals of a hazard function obtained by applying the delta method to the hazard function on the identity scale ($h(t)$) and on the log-scale ($\ln h(t)$). As [Andrea Discacciati](https://staff.ki.se/people/anddis) pointed out both approaches assymptotically yield the same results. However, working on the log-hazard scale is favorable for finite samples.
