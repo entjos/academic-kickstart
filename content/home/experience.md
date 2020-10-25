@@ -18,6 +18,14 @@ date_format = "Jan 2006"
 #   Leave `date_end` empty if it's your current employer.
 #   Begin/end multi-line descriptions with 3 quotes `"""`.
 [[experience]]
+  title = "PhD Student"
+  company = "Karolinska Insitutet, Deparment of Medicine Solna, Deivision for Clinical Epidemiology"
+  company_url = "https://ki.se/en/meds/kep-cancer-epidemiology-group"
+  data_start = "2019-09-21"
+  data_end = ""
+  description: """In my PhD project I study childbearing patterns in Hodgkin and non-Hodgkin lymphoma survivors. For these projects I mainly use complex survival models to study differences in childbearing rates between lymphoma survivors and the general population."""
+
+[[experience]]
   title = "Research Assistant Intern"
   company = "National Taiwan University, College of Public Health"
   company_url = "https://www.ntu.edu.tw/english/academics/academics_publicHealth.html"
