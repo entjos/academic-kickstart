@@ -283,7 +283,7 @@ legend(0, 0.3,
 # Get coefficents for Newuoa optimisation
 newuoa_coef &lt;- coef(opt)[&quot;newuoa&quot;, ]
 
-# Compute CIs for a 60 year of female across time
+# Compute CIs for a 60 year old female across time
 haz_optim_female &lt;- lapply(as.list(seq(0.01, 1000.01, 10)), function(t){
 
   g &lt;- paste(&quot;exp(gamma) * exp(alpha + beta_female + 60 * beta_age) *&quot;, t,
@@ -321,8 +321,8 @@ legend(&quot;topleft&quot;,
        inset = 0.01,
        cex = 0.8,
        fill = c(&quot;black&quot;, &quot;red&quot;),
-       legend = c(&quot;Optimix()&quot;, &quot;Flexregsurv()&quot;),
+       legend = c(&quot;Optimix()&quot;, &quot;flexsurvreg()&quot;),
        box.lty = 0)</code></pre>
 <p><img src="/post/optim_weibull_reg_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
-<p>Interestingly, we see quite some differences between our estimates for the CI and <TT>flexregsurv()</TT>’s estimates. Unfortunately, I didn’t find a reason for this difference yet. So if you have a guess, please let me know.</p>
+<p>Interestingly, we see quite some differences between our estimates for the CI and <TT>flexsurvreg()</TT>’s estimates. Unfortunately, I didn’t find a reason for this difference yet. So if you have a guess, please let me know.</p>
 <p>In this post today we fitted a Weibull regression by optimising its likelihood function using the <TT>optimx()</TT> function from the <TT>{optimx}</TT> package. I hope you got some new insides and ideas by reading this post. If you have any comments or suggestions, I would be happy to hear from you via <a href="mailto:jentrop@gmx.de">email</a>, <a href="https://twitter.com/entjos">twitter</a> or <a href="https://www.linkedin.com/in/joshua-entrop/">LinkedIn</a>.</p>
