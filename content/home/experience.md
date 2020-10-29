@@ -22,7 +22,7 @@ date_format = "Jan 2006"
   company = "Karolinska Insitutet, Deparment of Medicine Solna, Deivision for Clinical Epidemiology"
   company_url = "https://ki.se/en/meds/kep-cancer-epidemiology-group"
   location = "Stockholm, Sweden"
-  data_start = "2019-09-21"
+  date_start = "2020-09-21"
   data_end = ""
   description = """In my PhD project I study childbearing patterns in Hodgkin and non-Hodgkin lymphoma survivors. For these projects I mainly use complex survival models to study differences in childbearing rates between lymphoma survivors and the general population."""
 
