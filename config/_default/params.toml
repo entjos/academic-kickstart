@@ -9,7 +9,7 @@
 #   Latest themes (may require updating): https://sourcethemes.com/academic/themes/
 #   Browse built-in themes in `themes/academic/data/themes/`
 #   Browse user installed themes in `data/themes/`
-theme = "minimal"
+theme = "Minimal"
 
 # Enable users to switch between day and night mode?
 day_night = true
@@ -81,7 +81,7 @@ edit_page = {repo_url = "https://github.com/gcushen/hugo-academic", content_dir 
 ############################
 
 # Enter contact details (optional). To hide a field, clear it to "".
-email = "joshua.philipp.entrop@stud.ki.se"
+email = "joshua.entrop@ki.se"
 # phone = "888 888 88 88"
 
 # Address
