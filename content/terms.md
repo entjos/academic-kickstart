@@ -51,8 +51,8 @@ header:
     <li>online directory distributors;</li>
     <li>internet portals;</li>
     <li>educational institutions and trade associations;</li>
-    <li>educational website or blogs; and<li>
-    <li>websites or blogs with the topic of programming in R.<li>
+    <li>educational website or blogs; and</li>
+    <li>websites or blogs with the topic of programming in R.</li>
 </ul>
 
 <p>These organizations may link to our home page, to publications or to other Website information so long as the link: (a) is not in any way deceptive; (b) does not falsely imply sponsorship, endorsement or approval of the linking party and its products and/or services; and (c) fits within the context of the linking party’s site.</p>
