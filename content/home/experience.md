@@ -19,7 +19,7 @@ date_format = "Jan 2006"
 #   Begin/end multi-line descriptions with 3 quotes `"""`.
 [[experience]]
   title = "PhD Student"
-  company = "Karolinska Insitutet, Deparment of Medicine Solna, Deivision for Clinical Epidemiology"
+  company = "Karolinska Institutet, Department of Medicine Solna, Division for Clinical Epidemiology"
   company_url = "https://ki.se/en/meds/kep-cancer-epidemiology-group"
   location = "Stockholm, Sweden"
   date_start = "2020-09-21"
