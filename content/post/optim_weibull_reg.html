@@ -8,6 +8,7 @@ tags: [R, survival analysis, manual optimisation]
 draft: FALSE
 ---
 
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
 
 
 <p>In this blog post we will optimise a Weibull regression model by maximising its likelihood function using <TT>optimx()</TT> from the <TT>{optimx}</TT> package in R. In my previous blog post I showed how to optimise a Poisson regression model in the same manner. Optimising a Poisson and Weibull survival model using the likelihood function is quite similar. Hence, if you have any difficulties following this blog post, I would recommend you to read my previous blog post on optimising a Poisson regression model first. You can find my previous blog post <a href="https://www.joshua-entrop.com/post/optim_pois_reg/">here</a>. Please note, that you can download the <TT>R</TT> code that we will use throughout this post <a href="https://www.joshua-entrop.com/rcode/optim_weibull_reg.txt">here</a>.</p>
@@ -325,4 +326,4 @@ legend(&quot;topleft&quot;,
        box.lty = 0)</code></pre>
 <p><img src="/post/optim_weibull_reg_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
 <p>Interestingly, we see quite some differences between our estimates for the CI and <TT>flexsurvreg()</TT>’s estimates. Unfortunately, I didn’t find a reason for this difference yet. So if you have a guess, please let me know.</p>
-<p>In this post today we fitted a Weibull regression by optimising its likelihood function using the <TT>optimx()</TT> function from the <TT>{optimx}</TT> package. I hope you got some new insides and ideas by reading this post. If you have any comments or suggestions, I would be happy to hear from you via <a href="mailto:jentrop@gmx.de">email</a>, <a href="https://twitter.com/entjos">twitter</a> or <a href="https://www.linkedin.com/in/joshua-entrop/">LinkedIn</a>.</p>
+<p>In this post today we fitted a Weibull regression by optimising its likelihood function using the <TT>optimx()</TT> function from the <TT>{optimx}</TT> package. I hope you got some new insides and ideas by reading this post. If you have any comments or suggestions, I would be happy to hear from you via <a href="mailto:joshuaentrop@posteo.de">email</a>, <a href="https://twitter.com/entjos">twitter</a> or <a href="https://www.linkedin.com/in/joshua-entrop/">LinkedIn</a>.</p>
