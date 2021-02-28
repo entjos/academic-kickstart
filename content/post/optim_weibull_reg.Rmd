@@ -348,4 +348,4 @@ legend("topleft",
 
 Interestingly, we see quite some differences between our estimates for the CI and <TT>flexsurvreg()</TT>'s estimates. Unfortunately, I didn't find a reason for this difference yet. So if you have a guess, please let me know.
 
-In this post today we fitted a Weibull regression by optimising its likelihood function using the <TT>optimx()</TT> function from the <TT>{optimx}</TT> package. I hope you got some new insides and ideas by reading this post. If you have any comments or suggestions, I would be happy to hear from you via [email](mailto:jentrop@gmx.de), [twitter](https://twitter.com/entjos) or [LinkedIn](https://www.linkedin.com/in/joshua-entrop/).
+In this post today we fitted a Weibull regression by optimising its likelihood function using the <TT>optimx()</TT> function from the <TT>{optimx}</TT> package. I hope you got some new insides and ideas by reading this post. If you have any comments or suggestions, I would be happy to hear from you via [email](mailto:joshuaentrop@posteo.de), [twitter](https://twitter.com/entjos) or [LinkedIn](https://www.linkedin.com/in/joshua-entrop/).
