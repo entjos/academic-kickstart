@@ -1,0 +1,185 @@
+###############################################################################
+# Title: Optimisation of a Cox proportional hayard model using Optimx()
+# Date: 2021-02-28
+#
+# Author: Joshua P. Entrop
+# Website: joshua-entrop.com
+###############################################################################
+
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files from ls
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(optimx)
+require(numDeriv)
+require(purrr)
+require(dplyr)
+require(tibble)
+require(broom)
+
+# 2. Loading data set ---------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung <- as.data.frame(survival::lung)
+
+#Recode dichotomous variables
+lung$female <- ifelse(lung$sex == 2, 1, 0)
+lung$status_n <- ifelse(lung$status == 2, 1, 0)
+
+#Removes time ties in data set
+set.seed(2687153)
+lung$time <- map_dbl(lung$time,
+                     function(x){x + runif(1, -0.1, +0.1)})
+
+#Check if no ties are left
+lung %>%
+  count(time) %>%
+  arrange(desc(n)) %>%
+  head(5)
+
+# 3. Define log-likelihood function for Cox regression model ------------------
+negll <- function(par){
+
+  #Extract guesses for beta1 and beta2
+  beta1 <- par[1]
+  beta2 <- par[2]
+
+  #Define dependent and independent variables
+  m <- data.frame(t = lung$time,
+                  d = lung$status_n,
+                  x1 = lung$female,
+                  x2 = lung$age)
+
+  #Calculate theta
+  m$theta <- exp(beta1 * m$x1 + beta2 * m$x2)
+
+  #Calculate cumulative sum of theta with descending t
+  m <- m %>%
+    arrange(desc(t)) %>%
+    mutate(thetaj = cumsum(theta))
+
+  #Estimate negative log likelihood value
+  val <- -sum(m$d * ((m$x1 * beta1 + m$x2 * beta2) - log(m$thetaj)))
+
+  return(val)
+}
+
+# 4. Define gradient function for Weibull regression model --------------------
+negll_grad <- function(par){
+
+  #Extract guesses for beta1 and beta2
+  beta1 <- par[1]
+  beta2 <- par[2]
+
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+
+  #Define dependent and independent variables
+  m <- data.frame(t = lung$time,
+                  d = lung$status_n,
+                  x1 = lung$female,
+                  x2 = lung$age)
+
+  #Calculate theta, thetaj, thetajx1 and thetajx2
+  m$theta <- exp(beta1 * m$x1 + beta2 * m$x2)
+
+  m <- m %>%
+    arrange(desc(t)) %>%
+    mutate(thetaj = cumsum(theta),
+           thetajx1 = cumsum(theta * x1),
+           thetajx2 = cumsum(theta * x2))
+
+  #Calculate partial gradient functions
+  gg[1] <- -sum(m$d * (m$x1 - (m$thetajx1 / m$thetaj)))
+  gg[2] <- -sum(m$d * (m$x2 - (m$thetajx2 / m$thetaj)))
+
+  return(gg)
+}
+
+# 4.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 1, 0, 0, 0
+mygrad <- negll_grad(c(0, 0))
+numgrad <- grad(x = c(0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+
+# 5. Find minimum of log-likelihood function ----------------------------------
+# Passing names to the values in the par vector improves readability of results
+opt <- optimx(par = c(beta_female = 0, beta_age = 0),
+              fn = negll,
+              gr = negll_grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+# Show results for optimisation algorithms, that converged (convcode != 9999)
+summary(opt, order = "value") %>%
+  rownames_to_column("algorithm") %>%
+  filter(convcode != 9999) %>%
+  arrange(value) %>%
+  select(algorithm, beta_female, beta_age, value) %>%
+  head(5)
+
+# 6. Estimate regression coefficients using coxph  ----------------------------
+cox_model <- coxph(Surv(time, status_n == 1) ~ female + age,
+                          data = lung)
+
+# 7. Comparing results from optimx and Coxph ----------------------------------
+coef_coxph <- unname(coef(cox_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+
+  opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+
+  diff_beta_1 <- (coef_opt[i, 1] - coef_coxph[1])
+  diff_beta_2 <- (coef_opt[i, 2] - coef_coxph[2])
+
+  mean_dif <- mean(diff_beta_1, diff_beta_2,
+                   na.rm = TRUE)
+
+  data.frame(opt_name, mean_dif)
+
+}) %>%
+  bind_rows() %>%
+  filter(!is.na(mean_dif)) %>%
+  mutate(mean_dif = abs(mean_dif)) %>%
+  arrange(mean_dif)
+
+# 8. Estimate the standard error ----------------------------------------------
+
+#Extract hessian matrix for the Rcgmin optimisation
+hessian_m <- attributes(opt)$details["Rcgmin", ][["nhatend"]]
+
+# Estimate se based on hessian matrix
+fisher_info <- solve(hessian_m)
+prop_se  <- sqrt(diag(fisher_info))
+
+# Compare the estimated se from our model with the one from the Coxph model
+ses <- data.frame(se_rcgmin = prop_se,
+                  se_coxph  = tidy(cox_model)[["std.error"]]) %>%
+  print()
+
+all.equal(ses[,"se_rcgmin"], ses[, "se_coxph"])
+
+# 9. Estimate 95%CIs using estimation of SE -----------------------------------
+
+# Extracting estimates from the Rcgmin optimisaiton
+coef_test <- coef(opt)["Rcgmin",]
+
+# Compute 95%CIs
+upper <- coef_test + 1.96 * prop_se
+lower <- coef_test - 1.96 * prop_se
+
+# Print estimate with 95%CIs
+data.frame(Estimate = coef_test,
+           CI_lower = lower,
+           CI_upper = upper,
+           se       = prop_se) %>%
+  round(4)
+
+#' ////////////////////////////////////////////////////////////////////////////
+#' END OF R-FILE

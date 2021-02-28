@@ -50,3 +50,6 @@ mle_par$par                                 #Showing estimates for unknown param
 
 # 5. Compare results to estimates from lm() -----------------------------------
 summary(lm(sys ~ age + as.numeric(gender), data = icu))
+
+#' ////////////////////////////////////////////////////////////////////////////
+#' END OF R-FILE
