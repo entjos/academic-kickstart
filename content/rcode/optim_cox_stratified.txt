@@ -1,0 +1,226 @@
+###############################################################################
+# Title: Optimisation of a stratified Cox proportional hazard model
+#        using Optimx()
+# Date: 2021-04-04
+#
+# Author: Joshua P. Entrop
+# Website: joshua-entrop.com
+###############################################################################
+
+# 1. Prefix -------------------------------------------------------------------
+
+# Remove all files loaded in the global environment
+rm(list = ls())
+
+# Loading packages
+require(survival)
+require(optimx)
+require(numDeriv)
+require(purrr)
+require(dplyr)
+require(tibble)
+require(broom)
+
+# 2. Loading data set ---------------------------------------------------------
+
+#Reading the example data set lung from the survival package
+lung <- as.data.frame(survival::lung)
+
+#Recode dichotomous variables
+lung$female <- ifelse(lung$sex == 2, 1, 0)
+lung$status_n <- ifelse(lung$status == 2, 1, 0)
+lung$ecog_high <- ifelse(lung$ph.ecog %in% c(0, 1), 0, 1)
+
+#Removes time ties in data set
+set.seed(2687153)
+lung$time <- map_dbl(lung$time,
+                     function(x){x + runif(1, -0.1, +0.1)})
+
+#Check if no ties are left
+lung %>%
+  count(time) %>%
+  arrange(desc(n)) %>%
+  head(5)
+
+# 3. Check for non-proportional effect in our simple cox-model ----------------
+
+# Fit a cox model
+cox_model <- coxph(Surv(time, status_n == 1) ~ ecog_high + age + female,
+                   data = lung)
+
+# Check for non-proportional effects using Schönefeld residuals
+cox.zph(cox_model)
+
+# 4. Define log-likelihood function for stratified Cox regression model -------
+negll <- function(par){
+
+  #Extract guesses for beta1 and beta2
+  beta1 <- par[1]
+  beta2 <- par[2]
+
+  #Define dependent and independent variables
+  m <- data.frame(t = lung$time,
+                  d = lung$status_n,
+                  x1 = lung$ecog_high,
+                  x2 = lung$age,
+                  z  = lung$female)
+
+  #Calculate theta
+  m$theta <- exp(beta1 * m$x1 + beta2 * m$x2)
+
+  #Calculate cumulative sum of theta with descending t for strata z == 0
+  mz0 <- m %>%
+    filter(z == 0) %>%
+    arrange(desc(t)) %>%
+    mutate(thetaj = cumsum(theta))
+
+  #Calculate cumulative sum of theta with descending t for strata z == 1
+  mz1 <- m %>%
+    filter(z == 1) %>%
+    arrange(desc(t)) %>%
+    mutate(thetaj = cumsum(theta))
+
+  #Estimate negative log likelihood value
+  val_z0 <- sum(mz0$d * ((mz0$x1 * beta1 + mz0$x2 * beta2) - log(mz0$thetaj)))
+  val_z1 <- sum(mz1$d * ((mz1$x1 * beta1 + mz1$x2 * beta2) - log(mz1$thetaj)))
+
+  val <- -sum(val_z0, val_z1)
+
+  return(val)
+}
+
+# 5. Define gradient function for stratified Cox regression model -------------
+negll_grad <- function(par){
+
+  #Extract guesses for beta1 and beta2
+  beta1 <- par[1]
+  beta2 <- par[2]
+
+  #Create output vector
+  n <- length(par[1])
+  gg <- as.vector(rep(0, n))
+
+  #Define dependent and independent variables
+  m <- data.frame(t = lung$time,
+                  d = lung$status_n,
+                  x1 = lung$ecog_high,
+                  x2 = lung$age,
+                  z  = lung$female)
+
+  #Calculate theta
+  m$theta <- exp(beta1 * m$x1 + beta2 * m$x2)
+
+  #Calculate thetaj, thetajx1 and thetajx2 for strata z == 0
+  mz0 <- m %>%
+    filter(z == 0) %>%
+    arrange(desc(t)) %>%
+    mutate(thetaj = cumsum(theta),
+           thetajx1 = cumsum(theta * x1),
+           thetajx2 = cumsum(theta * x2))
+
+  #Calculate thetaj, thetajx1 and thetajx2 for strata z == 1
+  mz1 <- m %>%
+    filter(z == 1) %>%
+    arrange(desc(t)) %>%
+    mutate(thetaj = cumsum(theta),
+           thetajx1 = cumsum(theta * x1),
+           thetajx2 = cumsum(theta * x2))
+
+  #Calculate partial gradient functions for x1 within strata of z
+  gg_x1_z0 <- sum(mz0$d * (mz0$x1 - (mz0$thetajx1 / mz0$thetaj)))
+  gg_x1_z1 <- sum(mz1$d * (mz1$x1 - (mz1$thetajx1 / mz1$thetaj)))
+
+  #Calculate partial gradient functions for x2 within strata of z
+  gg_x2_z0 <- sum(mz0$d * (mz0$x2 - (mz0$thetajx2 / mz0$thetaj)))
+  gg_x2_z1 <- sum(mz1$d * (mz1$x2 - (mz1$thetajx2 / mz1$thetaj)))
+
+  #Calculate gradient for x1 and x2 as the sum of the gradients within z
+  gg[1] <- -sum(gg_x1_z0, gg_x1_z1)
+  gg[2] <- -sum(gg_x2_z0, gg_x2_z1)
+
+  return(gg)
+}
+
+# 5.1 Compare gradient function with numeric approximation of gradient ========
+# compare gradient at 0, 0
+mygrad <- negll_grad(c(0, 0))
+numgrad <- grad(x = c(0, 0), func = negll)
+
+all.equal(mygrad, numgrad)
+
+# 6. Find minimum of log-likelihood function ----------------------------------
+# Passing names to the values in the par vector improves readability of results
+opt <- optimx(par = c(beta_ecog = 0, beta_age = 0),
+              fn = negll,
+              gr = negll_grad,
+              hessian = TRUE,
+              control = list(trace = 0, all.methods = TRUE))
+
+# Show results for optimisation algorithms, that converged (convcode != 9999)
+summary(opt, order = "value") %>%
+  rownames_to_column("algorithm") %>%
+  filter(convcode != 9999) %>%
+  arrange(value) %>%
+  select(algorithm, beta_ecog, beta_age, value) %>%
+  head(5)
+
+# 7. Estimate regression coefficients using coxph  ----------------------------
+cox_model <- coxph(Surv(time, status_n == 1) ~ ecog_high + age+ strata(female),
+                   data = lung)
+
+# 8. Comparing results from optimx and coxph ----------------------------------
+coef_coxph <- unname(coef(cox_model))
+coef_opt <- coef(opt)
+
+lapply(1:nrow(coef_opt), function(i){
+
+  opt_name <- attributes(coef_opt)$dimnames[[1]][i]
+
+  diff_beta_1 <- (coef_opt[i, 1] - coef_coxph[1])
+  diff_beta_2 <- (coef_opt[i, 2] - coef_coxph[2])
+
+  mean_dif <- mean(diff_beta_1, diff_beta_2,
+                   na.rm = TRUE)
+
+  data.frame(opt_name, mean_dif)
+
+}) %>%
+  bind_rows() %>%
+  filter(!is.na(mean_dif)) %>%
+  mutate(mean_dif = abs(mean_dif)) %>%
+  arrange(mean_dif)
+
+# 9. Estimate the standard error ----------------------------------------------
+
+# Extract hessian matrix for the nlm optimisation
+hessian_m <- attributes(opt)$details["nlm", ][["nhatend"]]
+
+# Estimate se based on hessian matrix
+fisher_info <- solve(hessian_m)
+prop_se  <- sqrt(diag(fisher_info))
+
+# Compare the estimated se from our model with the one from the Coxph model
+ses <- data.frame(se_nlm    = prop_se,
+                  se_coxph  = tidy(cox_model)[["std.error"]]) %>%
+  print()
+
+all.equal(ses[,"se_nlm"], ses[, "se_coxph"])
+
+# 10. Estimate 95%CIs using estimation of SE ----------------------------------
+
+# Extracting estimates from the nlm optimisaiton
+coef_test <- coef(opt)["nlm",]
+
+# Compute 95%CIs
+upper <- coef_test + 1.96 * prop_se
+lower <- coef_test - 1.96 * prop_se
+
+# Print estimate with 95%CIs
+data.frame(Estimate = coef_test,
+           CI_lower = lower,
+           CI_upper = upper,
+           se       = prop_se) %>%
+  round(4)
+
+#' ////////////////////////////////////////////////////////////////////////////
+#' END OF R-FILE

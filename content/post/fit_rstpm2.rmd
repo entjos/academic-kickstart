@@ -1,0 +1,235 @@
+---
+title: "Fitting a flexible parametric survival model in R using {rstpm2}"
+author: "Joshua Philipp Entrop"
+date: '2020-12-20'
+output: html_document
+categories: [R, Flexible Parametric Survival Models]
+tags: [R, survival analysis, flexible parametric survival models]
+draft: TRUE
+---
+Prefix
+
+```{r}
+# 1. Prefix -------------------------------------------------------------------
+
+# 1.1 Load packages ===========================================================
+
+library(rstpm2)
+library(survival)
+library(dplyr)
+library(ggplot2)
+library(readstata13)
+library(latex2exp)
+
+# 1.2 Set up Rottadam 2 data set ==============================================
+
+rott2 <- AF::rott2 # For more information see help(rott2)
+
+# Create variable for survival time in years
+rott2$rf_year <- rott2$rf / 12
+
+# Create numeric dummy for hormon use
+rott2$hormon_num <- ifelse(rott2$hormon == "no", 0, 1) # 
+```
+
+Fit Cox model
+
+```{r}
+# 2. Cox model ----------------------------------------------------------------
+
+# 2.1 Fit Cox model ===========================================================
+
+cox_model <- coxph(Surv(rf_year, rfi) ~ hormon_num,
+                   data = rott2)
+
+summary(cox_model)
+```
+
+Test for tvc
+
+```{r}
+# 2.2 Test for time dependent effects =========================================
+
+# comupte Schoenefeld residuals
+cox_res <- cox.zph(cox_model,
+                   transform = "km") 
+
+#' Plot smooth curve of Schoenefeld residuals. Add beta(hormon) from cox_model.
+#' Print p-value for test of non-dependent effects
+plot(cox_res,
+     resid = FALSE,
+     xlab = "km tranformed years",
+     ylab = TeX("Estimated $\\beta_{hormon}$ (t)"))
+title("Smoothed Schoenefeld residuals for hormon use",
+      sub = TeX("Red line: Estimated $\\beta$ for hormon use obtained from Cox model"),
+      adj = 0)
+abline(h = as.numeric(cox_model$coefficients),
+       col = "red")
+text(0.1, -1.25, 
+     paste("P-value =", round(cox_res$table["hormon_num", "p"], 2)))
+```
+
+Fit fpm
+
+```{r}
+# 3. Estimate flexible parametric survival model (FPM)-------------------------
+
+# 3.1 Test for degrees of freedome ============================================
+
+# Fit FPM with different degrees of freedome
+fpm_models <- lapply(1:5, function(i){
+  
+  stpm2(Surv(rf_year, rfi) ~ hormon_num,
+        data = rott2,
+        df = i,
+        tvc = list("hormon_num" = i))
+  
+})
+
+# Compute AIC and BIC for different models
+lapply(1:5, function(i){
+  
+  data.frame(df = i, 
+             bic = BIC(fpm_models[[i]]),
+             aic = AIC(fpm_models[[i]]))
+  
+}) %>% 
+  bind_rows() %>% 
+  arrange(bic)
+```
+
+```{r}
+# Plot hazard rates for FPMs with different d.f.
+
+# Predict hazard rates for different d.f. by sex
+fpm_haz <- lapply(0:1, function(hormoni){
+  lapply(1:5, function(i){
+    
+    data.frame(
+      predict(
+        fpm_models[[i]],
+        newdata = data.frame(hormon_num = hormoni),
+        grid = TRUE,
+        type = "hazard",
+        se.fit = TRUE,
+        full = TRUE),
+      df = i,
+      hormon = hormoni)
+    
+  }) %>% bind_rows()
+}) %>% bind_rows()
+
+# Plot predicted hazard rates by sex
+facet_labs <- c("Non hormon users", "Hormon users")
+names(facet_labs) <- c(0, 1)
+
+ggplot(fpm_haz,
+       aes(x = rf_year,
+           y = Estimate * 10000,
+           lty = as.factor(df),
+           group = as.factor(df))) +
+  geom_line() +
+  facet_wrap(~ hormon_num,
+             labeller = labeller(hormon_num = facet_labs)) +
+  labs(title = "Relapse rate among breast cancer patients by hormon use",
+       x = "Years",
+       y = "Rate per 10 000 person-years",
+       lty = "d.f. of FPM") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        strip.background = element_blank())
+
+```
+
+```{r, results=FALSE}
+# Set up new-data-object for prediction of hazard rates
+newdata1 <- data.frame(hormon_num = 0)
+
+# Begin plot
+plot(fpm_models[[1]],
+     newdata = newdata1,
+     type = "hr",
+     exposed = function(newdata1) transform(newdata1, hormon_num = 1),
+     ci = FALSE,
+     rug = FALSE,
+     ylim = c(0.5, 3),
+     lty = 1,
+     xlab = "Years")
+
+lapply(2:5, function(i){
+  
+  lines(fpm_models[[i]],
+        newdata = newdata1,
+        type = "hr",
+        exposed = function(newdata1) transform(newdata1, hormon_num = 1),
+        ci = FALSE,
+        lty = i)
+  
+})
+
+abline(h = exp(as.numeric(cox_model$coefficients)),
+       col = "blue")
+
+title("Hazard ratio of relapse comparing hormon-users and non-users",
+      sub = "Blue line: Cox-model",
+      adj = 0)
+
+legend("topright", 
+       legend = vapply(c(1:5), function(i) {paste("df =", i)}, character(1)), 
+       lty = 1:5,
+       title = "d.f.")
+```
+
+```{r}
+# Set up new-data-object for prediction of hazard rates
+#newdata1 <- data.frame(hormon_num = 0)
+#
+#fpm_df3_comp <- lapply(list("hr", "hdiff"), function(e_type){
+#  
+#  data.frame(
+#    predict(
+#      fpm_models[[3]],
+#      type = e_type,
+#      newdata = data.frame(hormon_num = 0),
+#      var = "hormon_num",
+#      grid = TRUE,
+#      se.fit = TRUE,
+#      full = TRUE),
+#    type = e_type)
+#  
+#})
+#
+#fpm_df3_abs <- lapply(list("hazard", "cumhaz"), function(e_type){
+#  lapply(0:1, function(hormoni){
+#    
+#    data.frame(
+#      predict(
+#        fpm_models[[3]],
+#        type = e_type,
+#        newdata = data.frame(hormon_num = hormoni),
+#        grid = TRUE,
+#        se.fit = TRUE,
+#        full = TRUE),
+#      type = e_type) 
+#    
+#  }) %>% bind_rows()
+#}) %>% bind_rows()
+#
+#ggplot(fpm_df3_comp,
+#       aes(x = rf_year,
+#           y = Estimate)) +
+#  geom_line() +
+#  facet_wrap(~ type,
+#             scales = "free_y")
+#
+#ggplot(fpm_df3_abs,
+#       aes(x = rf_year,
+#           y = Estimate,
+#           lty = as.factor(hormon_num),
+#           group = as.factor(hormon_num))) +
+#  geom_line() +
+#  facet_wrap(~ type,
+#             scales = "free_y")
+#
+```
+
