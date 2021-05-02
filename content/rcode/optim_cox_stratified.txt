@@ -1,7 +1,7 @@
 ###############################################################################
 # Title: Optimisation of a stratified Cox proportional hazard model
 #        using Optimx()
-# Date: 2021-04-04
+# Date: 2021-05-02
 #
 # Author: Joshua P. Entrop
 # Website: joshua-entrop.com
