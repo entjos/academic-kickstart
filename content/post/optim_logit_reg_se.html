@@ -7,6 +7,7 @@ categories: [Optimisation, R]
 tags: [R, logistic regression, manual optimisation]
 ---
 
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
 
 
 <p>In my <a href="https://www.joshua-entrop.com/post/optim_logit_reg/">last post</a> I estimated the point estimates for a logistic regression model using <TT>optimx()</TT> from the <TT>optimx</TT> package in <TT>R</TT>. In this post I would like to contine with this model an try to find the standard error (SE) for the derived estimates. Uncertainty is probably the most important quantity in statistics and therefore I think it is worthwhile to look a lite bit more into this. However, before, we can start with the estimation of the SEs, I would ask you to run the code for deriving the point estimates for the logistic regression using <TT>optimx()</TT>, which you can find <a href="https://www.joshua-entrop.com/rcode/optim_logit_reg.txt/">here</a>. This will be the starting point for our further calculations.</p>

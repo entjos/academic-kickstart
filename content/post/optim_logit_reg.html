@@ -7,6 +7,7 @@ tags: [R, logistic regression, manual optimisation]
 output: html_document
 ---
 
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
 
 
 <p>In my <a href="https://www.joshua-entrop.com/post/optim_linear_reg/">last post</a> I used the <TT>optim()</TT> command to optimise a linear regression model. In this post, I am going to take that approach a little further and optimise a logistic regression model in the same manner. Thanks to John C. Nash, I got a first glimpse into the world of optimisation functions in <TT>R</TT>. His book showed me how important it is to compare the results of different optimisation algorithms. Where I used the <TT>base</TT> optimisation function <TT>optim()</TT> in my last post, I will use <TT>optimx()</TT> from the <TT>optimx</TT> package in this post. The <TT>optimx</TT> package and function were developed by Nash and colleagues as a wrapper of the <TT>base</TT> <TT>optim()</TT> function. There are numerous advantages in using <TT>optimx()</TT> instead of <TT>optim()</TT>. In my opinion, among the most important is an easier comparison between different optimisation methods. In case someone is more interested in the variety of optimisation functions and problems that come with them, I can warmly recommend John C. Nash’s book <a href="https://www.wiley.com/en-us/Nonlinear+Parameter+Optimization+Using+R+Tools-p-9781118569283"><i>Nonlinear Parameter Optimisation Using R Tools</i></a>.</p>
@@ -56,7 +57,7 @@ negll &lt;- function(par){
   pi &lt;- exp(xb) / (1 + exp(xb))
   
   #Set high values for 0 &lt; pi &lt; 1
-  if(any(pi) &gt; 1 || any(pi) &lt; 0) {
+  if(any(pi &gt; 1) | any(pi &lt; 0)) {
     val &lt;- 1e+200
   } else {
     val &lt;- -sum(y * log(pi) + (1 - y) * log(1 - pi))
@@ -120,36 +121,44 @@ all.equal(mygrad, numgrad)</code></pre>
 <pre><code>## [1] TRUE</code></pre>
 <p>We see, that the results from our analytic gradient function are identical to the results using the <TT>grad()</TT> function. So we can proceed and use the <TT>optimx()</TT> function to find the maximum of our log-likelihood function. As a first guess we use <span class="math inline">\(0\)</span> as initial value for all unknown parameters.</p>
 <pre class="r"><code># 4. Find maximum of log-likelihood function ----------------------------------
-opt &lt;- optimx(par = c(0, 0, 0), negll, 
+opt &lt;- optimx(par = c(alpha  = 0,
+                      beta_1 = 0, 
+                      beta_2 = 0), 
+              fn = negll, 
               gr = negll.grad, 
-              control = list(trace = 0, all.methods = TRUE))
+              control = list(trace = 0, 
+                             all.methods = TRUE))
 
 # print reulsts of optimisation
 # remove not needed information for purpose of presentation 
 summary(opt, order = &quot;convcode&quot;) %&gt;% 
   select(-value, -niter, -gevals, -fevals)</code></pre>
-<pre><code>##                      p1          p2           p3 convcode  kkt1 kkt2 xtime
-## Nelder-Mead -3.05574129  0.02756878 -0.011265895        0 FALSE TRUE  0.01
-## L-BFGS-B    -3.05676203  0.02758493 -0.011303170        0  TRUE TRUE  0.01
-## nlm         -3.05669063  0.02758409 -0.011311003        0  TRUE TRUE  0.02
-## nlminb      -3.05669048  0.02758409 -0.011311590        0  TRUE TRUE  0.01
-## CG          -0.03645581 -0.01905827 -0.008845892        1 FALSE TRUE  0.14
-## Rcgmin      -3.05669070  0.02758409 -0.011310980        1  TRUE TRUE  0.21
-## Rvmmin       0.00000000  0.00000000  0.000000000       21 FALSE TRUE  0.00
-## BFGS                 NA          NA           NA     9999    NA   NA  0.00
-## spg                  NA          NA           NA     9999    NA   NA  0.00
-## ucminf               NA          NA           NA     9999    NA   NA  0.00
-## newuoa               NA          NA           NA     9999    NA   NA  0.00
-## bobyqa               NA          NA           NA     9999    NA   NA  0.00
-## nmkb                 NA          NA           NA     9999    NA   NA  0.00
-## hjkb                 NA          NA           NA     9999    NA   NA  0.00</code></pre>
+<pre><code>##                 alpha     beta_1      beta_2 convcode  kkt1 kkt2 xtime
+## Nelder-Mead -3.055741 0.02756878 -0.01126589        0 FALSE TRUE  0.00
+## L-BFGS-B    -3.056762 0.02758493 -0.01130317        0  TRUE TRUE  0.00
+## nlm         -3.056691 0.02758409 -0.01131100        0  TRUE TRUE  0.00
+## nlminb      -3.056690 0.02758409 -0.01131159        0  TRUE TRUE  0.00
+## Rcgmin      -3.056691 0.02758409 -0.01131098        1  TRUE TRUE  0.04
+## Rvmmin       0.000000 0.00000000  0.00000000       21 FALSE TRUE  0.00
+## BFGS               NA         NA          NA     9999    NA   NA  0.00
+## CG                 NA         NA          NA     9999    NA   NA  0.00
+## spg                NA         NA          NA     9999    NA   NA  0.01
+## ucminf             NA         NA          NA     9999    NA   NA  0.00
+## newuoa             NA         NA          NA     9999    NA   NA  0.01
+## bobyqa             NA         NA          NA     9999    NA   NA  0.00
+## nmkb               NA         NA          NA     9999    NA   NA  0.00
+## hjkb               NA         NA          NA     9999    NA   NA  0.01</code></pre>
 <p>A value of <span class="math inline">\(0\)</span> in the <TT>convcode</TT> column of the output indicates, that the algorithm converged. Even though multiple algorithms converged and gave us a value for our three unknown parameters, they all provide slightly different estimates. Therefore, I think it would be interesting to compare our estimates with the estimates from the commonly used <TT>glm()</TT> function. Below I wrote a small function that estimates the mean differences in the estimates from the different optimisation methods and the <TT>glm</TT> model.</p>
 <pre class="r"><code># 5. Estimate regression coeficents using glm ---------------------------------
 glm_model &lt;- glm(sta_n ~ age + female, 
                  data = icu,
                  family = binomial(link = &quot;logit&quot;))
 
-# 6. Comparing results from optimx and glm ------------------------------------
+# Print coefficents
+coef(glm_model)</code></pre>
+<pre><code>## (Intercept)         age      female 
+## -3.05669068  0.02758409 -0.01131098</code></pre>
+<pre class="r"><code># 6. Comparing results from optimx and glm ------------------------------------
 glm_results &lt;- unname(coef(glm_model))
 coef_opt &lt;- coef(opt)
 
@@ -157,9 +166,9 @@ lapply(1:nrow(coef_opt), function(i){
     
     optimisation_algorithm &lt;- attributes(coef_opt)$dimnames[[1]][i]
 
-    mle_glm1 &lt;- (coef_opt[i, &quot;p1&quot;] - glm_results[1])
-    mle_glm2 &lt;- (coef_opt[i, &quot;p2&quot;] - glm_results[2])
-    mle_glm3 &lt;- (coef_opt[i, &quot;p3&quot;] - glm_results[3])
+    mle_glm1 &lt;- (coef_opt[i, &quot;alpha&quot; ] - glm_results[1])
+    mle_glm2 &lt;- (coef_opt[i, &quot;beta_1&quot;] - glm_results[2])
+    mle_glm3 &lt;- (coef_opt[i, &quot;beta_2&quot;] - glm_results[3])
     
     mean_difference &lt;- mean(mle_glm1, mle_glm2, mle_glm3, na.rm = TRUE)
     
@@ -176,6 +185,5 @@ lapply(1:nrow(coef_opt), function(i){
 ## 3                 nlminb    2.071622e-07
 ## 4               L-BFGS-B    7.134885e-05
 ## 5            Nelder-Mead    9.493966e-04
-## 6                     CG    3.020235e+00
-## 7                 Rvmmin    3.056691e+00</code></pre>
+## 6                 Rvmmin    3.056691e+00</code></pre>
 <p>This shows that the <TT>Rcgmin</TT> algorithm yield the most similar results to the estimates from the <TT>glm</TT> model. However, most of the algorithms in the table provide estimates similar to the estimates from the <TT>glm</TT> model, which indicates that our optimisation of the logistic regression model using the log-likelihood function and the gradient function worked out well.</p>

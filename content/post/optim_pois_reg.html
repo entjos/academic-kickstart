@@ -8,6 +8,7 @@ tags: [R, survival analysis, manual optimisation]
 draft: FALSE
 ---
 
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
 
 
 <p>In this blog post, we will fit a Poisson regression model by maximising its likelihood function using <TT>optimx()</TT> in <TT>R</TT>. As an example we will use the lung cancer data set included in the <TT>{survival}</TT> package. The data set includes information on 228 lung cancer patients from the North Central Cancer Treatment Group (NCCTG). Specifically, we will estimate the survival of lung cancer patients by sex and age using a simple Poisson regression model. You can download the code that I will use throughout post <a href="https://www.joshua-entrop.com/rcode/optim_pois_reg.txt">here</a>. The general survival function <span class="math inline">\(S(t)\)</span> for our model can be specified as</p>
