@@ -1,7 +1,7 @@
 ---
 title: "{ExclusionTable} a package for keeping track of exclusions and inclusions"
 author: "Joshua Philipp Entrop"
-date: '2021-11-01'
+date: "2021-11-01"
 output: html_document
 categories: [R]
 tags: [R, ExclusionTable]
@@ -12,7 +12,7 @@ draft: FALSE
 
 
 <p>In today’s blog post we will take a look at a package that allows you to keep track of the number of observations that you in- or exclude from your dataset or study population.</p>
-<p>In epidemiological studies we often want to limit our study population based on some inclusion and exclusion criteria. This is also the case in other areas such as social science or econometrics. Although there are a lot of nice functions in R to exclude observations from your study population, i.e. in the packages <TT>{base}</TT>, <TT>{dplyr}</TT> or <TT>{data.table}</TT>, there is no function that records how many observations you excluded or included in each step. Hence, I created a package <TT>{ExclusionTable}</TT> which includes the <TT>exclusion_table()</TT> function that does exactly this. In this blog post, I would like to introduce the function and show some of its features. The blog post also serves as a Vignette for the <TT>{ExclusionTable}</TT> package.</p>
+<p>In epidemiological studies we often want to limit our study population based on some inclusion and exclusion criteria. This is also the case in other areas such as social science or econometrics. Although there are a lot of nice functions in R to exclude observations from your study population, i.e. in the packages <TT>{base}</TT>, <TT>{dplyr}</TT> or <TT>{data.table}</TT>, there is no function that records how many observations you excluded or included in each step. Hence, I created a package <TT>{ExclusionTable}</TT> which includes the <TT>exclusion_table()</TT> function that does exactly this. In this blog post, I would like to introduce the function and show some of its features. The blog post also serves as a vignette for the <TT>{ExclusionTable}</TT> package.</p>
 <p>For this let’s imagine we are working with data from the the US National Health and Nutrition Examination Study (NHANES) from the years 2009 to 2012. This dataset includes questionnaire data on health related topics for a sample of the US population. To load the data we can conveniently use the <TT>{NHANES}</TT> package on CRAN. If you would like to get more information on the dataset please take a look at <TT>?NHANES</TT>.</p>
 <pre class="r"><code># Load packages
 library(NHANES)  # NHANES dataset
