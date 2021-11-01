@@ -18,13 +18,22 @@ date_format = "Jan 2006"
 #   Leave `date_end` empty if it's your current employer.
 #   Begin/end multi-line descriptions with 3 quotes `"""`.
 [[experience]]
+  title = "Research coordinator"
+  company = "Karolinska Institutet, Department of Medicine Solna, Division for Clinical Epidemiology"
+  company_url = "https://ki.se/en/meds/kep-cancer-epidemiology-group"
+  location = "Stockholm, Sweden"
+  date_start = "2021-04-01"
+  data_end = ""
+  description = """As a research coordinator I mainly work as data handler for the <TT>LymphomaBase</TT> linkage. This linkages includes data from multiple Swedish registries and is used for research projects in and outside of Karolinska Institutet. Additionally, I work as internal statistical consultant for projects in our research group."""
+
+[[experience]]
   title = "PhD Student"
   company = "Karolinska Institutet, Department of Medicine Solna, Division for Clinical Epidemiology"
   company_url = "https://ki.se/en/meds/kep-cancer-epidemiology-group"
   location = "Stockholm, Sweden"
   date_start = "2020-09-21"
   data_end = ""
-  description = """In my PhD project I study childbearing patterns in Hodgkin and non-Hodgkin lymphoma survivors. For these projects I mainly use complex survival models to study differences in childbearing rates between lymphoma survivors and the general population."""
+  description = """In my PhD project I study childbearing patterns in Hodgkin and non-Hodgkin lymphoma survivors. For these projects I use complex survival models to study differences in childbearing rates between lymphoma survivors and the general population."""
 
 [[experience]]
   title = "Research Assistant Intern"
