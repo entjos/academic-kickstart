@@ -1,0 +1,100 @@
+---
+title: "{ExclusionTable} a package for keeping track of exclusions and inclusions"
+author: "Joshua Philipp Entrop"
+date: '2020-12-20'
+output: html_document
+categories: [R]
+tags: [R, ExclusionTable]
+draft: TRUE
+---
+
+In today's blog post we will take a look at a package that allows you to keep track of the number of observations that you in or exclude from your dataset or study population.
+
+In epidemiological studies we often want to limit our study population based on some inclusion and exclusion criteria. This is also the case in other areas such as social science or econometrics. Although there are a lot of nice functions in R to exclude observations from your study population, i.e. in the packages <TT>{base}</TT>, <TT>{dplyr}</TT> or <TT>{data.table}</TT>, there is no function that records how many observations you excluded or included in each step. Hence, I created a package <TT>{ExclusionTable}</TT> which includes the <TT>ExclusionTable::exclusion_table()</TT> function that does excactly this. In this blog post, I would like to introduce the function and show some of the features.
+
+For this let's imagin we are working with data from the Data from the US National Health and Nutrition Examination Study (NHANES) from 2009 to 2012. This dataset includes questionaire data on health related topics for a sample of the US population. To load the data we can conviniently use the <TT>{NHANES}</TT> package on CRAN. If you would like to get more information on the dataset please take a look at <TT>?NHANES</TT>.
+
+```{r, message=FALSE}
+# Load packages
+library(NHANES)  # NHANES dataset
+library(dplyr)   # Data manipulaiton
+library(remotes) # Install packages from GitHub
+
+# Attache data
+data("NHANES")
+```
+Usually we don't want to use the whole study population for our analysis but only a subset. Let's assume we are insterested in a subset of older females included in the NHANES dataset who have complete information on BMI. For this we would like to include females aged 65 years or older and exclude all individuals with missing information on BMI. If we would like to do this in R we could for example use <TT>dplyr::filter()</TT>.
+
+```{r}
+# Subset NHANES data using dplyr::filter
+NHANES_subset <- NHANES %>% 
+  filter(Gender == "female",
+         Age    >= 65,
+         !is.na(BMI))
+
+# Print number of observations
+nrow(NHANES_subset)
+```
+
+The code above obtained the subpopulation of the study population that we are interestd in. For this we excluded 9,269 of the 10,000 observations in the dataset, but we don't know how many we excluded at each step, i.e. based on each of the three criteria. However, we often want to report those numbers in our acrticles, e.g. in study population flow-charts. That's were the <TT>{ExclusionTable}</TT> package makes your life easier. First let's install the package from GitHub.
+
+```{r}
+# Install {ExclusionTable} from GitHub
+remotes::install_github("entjos/ExclusionTable",
+                        ref = "main")
+
+# Load package
+library(ExclusionTable)
+```
+
+The <TT>{ExclusionTable::exclusion_table()}</TT> function takes as first argument a dataframe and as second and third arguments a character vector of inclusion and exclusion criteria, respectively. Let's try this function for our previous exclusions and inclusions. For this let's set <TT>keep_data = FALSE</TT>, since we are for now only interested in gettin gthe numbers of excluded individuals.
+
+```{r}
+exclusion_table(NHANES,
+                inclusion_criteria = c("Gender == 'female'",
+                                       "Age    >= 65"),
+                exclusion_criteria = "is.na(BMI)",
+                keep_data = FALSE)
+```
+The output above shows us that we excludes 4,980 male individuals from our dataset and 4281 individuals that were aged below 65. In total we excluded 9,261 individuals based on our inclusion criteria. Additionally, we excluded 8 individuals with missing information on BMI. Hence we end up with a dataset including 731 individuals as before. Please notice here the difference between inclusion and exclusion criteria: Individuals who do not meet the inclusion criteria will be excluded and individuals who meet the exclusion criteria will excluded. Also <TT>{ExclusionTable::exclusion_table()}</TT> will always apply the exclusion criteria after the inclusion criteria.
+
+This looks already really nice, but let's improve the output a little bit and supply some labels for our inclusion and exclusion criteria.
+
+```{r}
+exclusion_table(NHANES,
+                inclusion_criteria = c("Gender == 'female'",
+                                       "Age    >= 65"),
+                exclusion_criteria = "is.na(BMI)",
+                labels_inclusion   = c("Get females",
+                                       "Age is >= 65"),
+                labels_exclusion   = "Missing BMI",
+                keep_data = FALSE)
+```
+Now we get nice labels in our inclusion and exclusion tables. 
+
+Let's now actually keep the data and take a look at the output object of the <TT>exclusion_table()</TT> function. For this we will set <TT>keep_data = TRUE</TT>.
+
+```{r, message=FALSE}
+NHANES_ex_tab <- 
+  exclusion_table(NHANES,
+                  inclusion_criteria = c("Gender == 'female'",
+                                         "Age    >= 65"),
+                  exclusion_criteria = "is.na(BMI)",
+                  labels_inclusion   = c("Get females",
+                                         "Age is >= 65"),
+                  labels_exclusion   = "Missing BMI",
+                  keep_data = TRUE)
+
+# Print structure
+str(NHANES_ex_tab, 1)
+```
+
+The <TT>exclusion_table()</TT> function returns a list with maximum three <TT>data.frame</TT>s, depending on the options used. The <TT>[["table_in"]]</TT> and <TT>[["table_ex"]]</TT> <TT>data.frame</TT>s include the tables with the numbers of individuals excluded due to our inclusion and exclusion criteria, respectively. Those are the tables we have seen previously. The <TT>[["dataset"]]</TT> <TT>data.frame</TT> includes the dataset without the excluded observations. You can use this dataset for your further analysis. I usually assign the dataset to another object to access it quicker.
+
+```{r}
+NAHANES_cleaned <- NHANES_ex_tab[["dataset"]]
+
+nrow(NAHANES_cleaned)
+```
+
+Sometimes you might also be interested in using a variable from your global enviroment in the filter call. I often do this when I want to filter certain diagnosis codes, that I stored in a character variable in my enviroment. However, since we don't have any diagnosis codes in this dataset
