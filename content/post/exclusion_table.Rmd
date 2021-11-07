@@ -36,7 +36,7 @@ NHANES_subset <- NHANES %>%
 nrow(NHANES_subset)
 ```
 
-The code above obtained the subpopulation of the study population that we are interest in. For this we excluded 9,269 of the 10,000 observations leaving us with 731 observations in the dataset. However, we don't know how many observations we excluded at each step, i.e. based on each of the three criteria. Often we want to report those numbers in our articles, e.g. in study population flow-charts. That's were the <TT>{ExclusionTable}</TT> package makes your life easier. First let's install the package from GitHub.
+The code above obtained the subpopulation of the study population that we are interested in. For this we excluded 9,269 of the 10,000 observations leaving us with 731 observations in the dataset. However, we don't know how many observations we excluded at each step, i.e. based on each of the three criteria. Often we want to report those numbers in our articles, e.g. in study population flow-charts. That's were the <TT>{ExclusionTable}</TT> package makes your life easier. First let's install the package from GitHub.
 
 ```{r, eval=FALSE}
 # Install {ExclusionTable} from GitHub
@@ -58,7 +58,7 @@ exclusion_table(NHANES,
                 exclusion_criteria = "is.na(BMI)",
                 keep_data = FALSE)
 ```
-The output above shows us that we excludes 4,980 male individuals from our dataset and 4,281 individuals that were aged below 65. In total we excluded 9,261 individuals based on our inclusion criteria. Additionally, we excluded 8 individuals with missing information on BMI. Hence, we end up with a dataset including 731 individuals as before. Please notice the difference between inclusion and exclusion criteria: Individuals who do not meet the inclusion criteria will be excluded whereas individuals who meet the exclusion criteria will excluded. Also, <TT>ExclusionTable::exclusion_table(}</TT> will always apply the exclusion criteria after the inclusion criteria.
+The output above shows us that we excluded 4,980 male individuals from our dataset and 4,281 individuals that were aged below 65. In total we excluded 9,261 individuals based on our inclusion criteria. Additionally, we excluded 8 individuals with missing information on BMI. Hence, we end up with a dataset including 731 individuals as before. Please notice the difference between inclusion and exclusion criteria: Individuals who do not meet the inclusion criteria will be excluded whereas individuals who do meet the exclusion criteria will excluded. Also, <TT>ExclusionTable::exclusion_table(}</TT> will always apply the exclusion criteria after the inclusion criteria.
 
 If we want to use strings in the filter statements, we can use single quotation marks within the strings, e.g. <TT>"Gender == 'female'"</TT>.
 
