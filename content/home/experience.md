@@ -18,13 +18,13 @@ date_format = "Jan 2006"
 #   Leave `date_end` empty if it's your current employer.
 #   Begin/end multi-line descriptions with 3 quotes `"""`.
 [[experience]]
-  title = "Research coordinator"
+  title = "Statistician"
   company = "Karolinska Institutet, Department of Medicine Solna, Division for Clinical Epidemiology"
   company_url = "https://ki.se/en/meds/kep-cancer-epidemiology-group"
   location = "Stockholm, Sweden"
   date_start = "2021-04-01"
   data_end = ""
-  description = """As a research coordinator I mainly work as data handler for the <TT>LymphomaBase</TT> linkage. This linkages includes data from multiple Swedish registries and is used for research projects in and outside of Karolinska Institutet. Additionally, I work as internal statistical consultant for projects in our research group."""
+  description = """As an applied statistician, I mainly work as data handler for the <TT>LymphomaBase</TT> linkage and as statistical consultant for other research projects within the Cancerepidemiology research group at the Division for Clinical Epidemiology. The <TT>LymphomaBase</TT> linkage includes data on 40,000 lymphoma patiens and 400.000 comparators from the general population. Both lymphoma patients and comparators are linked to various national Swedish registers as well as specific Swedish quality registers."""
 
 [[experience]]
   title = "PhD Student"
@@ -33,7 +33,7 @@ date_format = "Jan 2006"
   location = "Stockholm, Sweden"
   date_start = "2020-09-21"
   data_end = ""
-  description = """In my PhD project I study childbearing patterns in Hodgkin and non-Hodgkin lymphoma survivors. For these projects I use complex survival models to study differences in childbearing rates between lymphoma survivors and the general population."""
+  description = """In my PhD project I study childbearing patterns in Hodgkin and non-Hodgkin lymphoma survivors. For these projects I use complex survival models to study differences in childbearing rates between lymphoma survivors and the general population. Within these projects I also contribue to methods development in the areas of competing risks and recurrent events."""
 
 [[experience]]
   title = "Research Assistant Intern"

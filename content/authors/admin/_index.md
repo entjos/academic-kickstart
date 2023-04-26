@@ -10,7 +10,7 @@ authors:
 superuser: true
 
 # Role/position
-role: PhD Student, MMSc in Epidemiology
+role: PhD Student, Statistician, MMSc in Epidemiology
 
 # Organizations/Affiliations
 organizations:
@@ -30,10 +30,10 @@ education:
   courses:
   - course: MMSc Public Health Epidemiology
     institution: Karolinska Institutet Stockholm, Sweden
-    year:
+    year: 2020
   - course: BA Social Science
     institution: Ruhr-University Bochum, Germany
-    year:
+    year: 2018
 
 # Social/Academic Networking
 # For available icons, see: https://sourcethemes.com/academic/docs/page-builder/#icons
@@ -68,6 +68,6 @@ user_groups:
 - Visitors
 ---
 
-I am a PhD student and research coordinator at [Karolinska Institutet](https://staff.ki.se/people/josent) with a passion for health data and statistical analyses. I am working in the research group on [cancer epidemiology](https://ki.se/en/meds/kep-cancer-epidemiology-group) within the department of medicine at Karolinska Institutet. My research interests lie within applied biostatistics and clinical epidemiology. I am interested in statistical and methodological challenges that come along with analysing registry and survival data. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
+I am a PhD student and statistician working at [Karolinska Institutet](https://staff.ki.se/people/josent) with a passion for health data and statistical analyses. I am working in the research group on [cancer epidemiology](https://ki.se/en/meds/kep-cancer-epidemiology-group) within the department of medicine at Karolinska Institutet. My research interests lie within applied biostatistics and clinical epidemiology. I am interested in statistical and methodological challenges that come along with analysing registry and survival data. Within the research process, the phase of data analysis is the most interesting one for me. I love to apply different statistical models to data, to reveal new insights, which cannot be seen at the first glance.
 
 All my blog posts on R are also kindly shared on the [R-bloggers](https://www.r-bloggers.com) website.
