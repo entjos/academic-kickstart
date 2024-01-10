@@ -10,29 +10,29 @@ draft: TRUE
 
 Have you ever encountered a situation in which you wanted to test different degrees of freedom (DF) for a generalised survival model? I encounter this situation quite frequently and after writing for loops for looping through the different combinations of DFs for different spline functions, I decided to write a R function that does this for me instead.
 
-In today's blog post I would like to introduce you to `fpm_test_dfs()`, which does exactly that. The function can be used to test combinations of DFs for different spline functions in a generalised survival model fitted with `rstpm2::stpm()`. However, before discussing about the function, I would like to quickly introduce the generalised survival model modeled on the log cumulative hazard function ($\ln H(t)$). In these models the baseline hazard function is modeled using a spline function of log time with knots $\mathbf{k}_0$ and parameters $\gamma$:
+In today's blog post I would like to introduce you to `fpm_test_dfs()`, which does exactly that. The function can be used to test combinations of DFs for different spline functions in a generalised survival model fitted with `rstpm2::stpm()`. However, before discussing about the function, I would like to quickly introduce the generalised survival model modeled on the log cumulative hazard function ($\ln H(t)$). In these models the baseline hazard function is modeled using a spline function of log time with a vector of knots $\mathbf{k}_0$ and parameters $\gamma$:
 
 $$
 \ln \{H(t|\mathbf{x})\} = s\{\ln(t)|\mathbf{\gamma}, \mathbf{k}_0\} + \mathbf{x}\mathbf{\beta}
 $$
-where $\mathbf{x}$ and $\mathbf{\beta}$ are covariates and regression parameters, respectively. The number of knots and the DFs have a direct relationship depending on which type of spline function you use and which degree you use for the polynomial. The `rstpm2::stpm2()` function uses restricted cubic splines, which are natural splines in which the first and second order derivatives of the spline function at the knots are restricted to be equal:
+where $\mathbf{x}$ and $\mathbf{\beta}$ are vectors of covariates and regression parameters, respectively. The number of knots and the DFs have a direct relationship depending on which type of spline function and which polynomial you use. The `rstpm2::stpm2()` function uses restricted cubic splines, which are natural cubic splines in which the first and second order derivatives of the spline function at the knots are restricted to be equal:
 
 $$
 s\{\ln(t)|\mathbf{\gamma}, \mathbf{k}_0\} = \beta_{00} + \beta_{01} \ln(t) + \beta_{02} \ln(t) ^ 2 + \beta_{03} \ln(t) ^ 3 + \sum_{i = 1}^K \beta_{i3} (\ln(t) - k_i)^3_+
 $$
 
-The number of knots and DFs are related through $K = \text{DF} - 1$ for restricted cubic spline models.
+The number of knots and DFs for restricted cubic splines are related through $K = \text{DF} - 1$.
 
-However, we cannot only use spline function for modelling the baseline hazard function, but also for modelling time-varying covariate effects. In that case the model can be generalised for including $D$ time-varying covariate effects:
+However, we cannot only use spline function for modelling the baseline hazard function, but also for modelling time-varying covariate effects. In this case the above model can be generalised for including $D$ time-varying covariate effects:
 
 $$
 \ln \{H(t|\mathbf{x})\} = s\{\ln(t)|\mathbf{\gamma}, \mathbf{k}_0\} + \sum_{j=1}^D s\{\ln(t)|\mathbf{\delta}_j, \mathbf{k}_j\} \mathbf{x}_j + \mathbf{x}\mathbf{\beta}
 $$
-where $\mathbf{\delta}_j$ and $\mathbf{k}_j$ are the number of knots and parameters for the spline function of the time-varying effect of covariate $x_j$.
+where $\mathbf{\delta}_j$ and $\mathbf{k}_j$ are the vectors of knots and parameters for the spline function of the time-varying effect of covariate $x_j$.
 
-In the model above we need to specify a lot of different DFs one for the baseline hazard function and one for each time-varying covariate effect that we would like to include in this model. Finding the right combination of DFs for a model can be a challenging task as. A common approach is to fit models with different DFs and compare their AIC or BIC in order to identify the best fitting model. This is where `fpm_test_dfs()` comes in handy. `fpm_test_dfs()` allows you to specify which DFs you would like to test for each spline function included in your model and returns to you a data frame including the corresponding AIC and BIC values for each possible combination of DFs.
+In the model above we need to specify a lot of different DFs one for the baseline hazard function and one for each time-varying covariate effect that we would like to include in our model. Finding the right combination of DFs for a model can be a challenging task. A common approach is to fit models with different DFs and compare their AIC or BIC value in order to identify the best fitting model. This is where `fpm_test_dfs()` comes in handy. `fpm_test_dfs()` allows you to specify which DFs you would like to test for each spline function included in your model and returns a data frame including the corresponding AIC and BIC values for each possible combination of DFs.
 
-For this `fpm_test_dfs()` requires the following 5 arguments:
+For this, `fpm_test_dfs()` requires the following 5 arguments:
 
 - `formula`: A formular describing the model that you would like to test. This formula will be passed directly to `rstpm2::stpm()`.
 - `dfs_bh`: An integer vector of DFs used for the spline function of the baseline hazard.
@@ -40,7 +40,7 @@ For this `fpm_test_dfs()` requires the following 5 arguments:
 - `by_vars`: A character vector including the names of variables that should be used for stratifying the model, if needed.
 - `data`: A dataset which is passed to `rstpm2::stpm2()`.
 
-Let's test the function using the breast cancer dataset included in the `rstpm2` package. For this we first need to load the `rstpm2` package and install the `fpm_test_dfs()` function, which is included in the `entjosR` package on GitHub.
+Let's test the function using the breast cancer dataset included in the `rstpm2` package. For this, we first need to load the `rstpm2` package and install the `fpm_test_dfs()` function, which is included in the `entjosR` package on GitHub.
 
 ```{r message=FALSE, warning=FALSE}
 # load rstpm2
@@ -61,8 +61,8 @@ However, we need to specify how many DFs we would like to use for modelling the 
 ```{r}
 # Test for best fitting baseline hazard function
 dfs_test_model1 <- fpm_test_dfs(Surv(rectime, censrec) ~ 1,
-             dfs_bh  = 1:10,
-             data = brcancer)
+                                dfs_bh = 1:10,
+                                data   = brcancer)
 
 dfs_test_model1
 ```
@@ -124,4 +124,6 @@ We know receive a list of dataframes as output of `fpm_test_dfs()`. The first da
 fpm_get_best_fit(dfs_test_model3)
 ```
 
-The results shows that among those that did not receive hormonal therapy 2 DFs are sufficent for modelling the baseline hazard function according to both AIC and BIC. However, among those that did receive hormonal therapy the best fitting model according to the AIC value includes 3 DFs for the baseline hazard function whereas the best fitting model according to the BIC includes 2 DFs for the baseline hazard function.
+The results shows that among those that did not receive hormonal therapy 2 DFs are sufficient for modelling the baseline hazard function according to both AIC and BIC. However, among those that did receive hormonal therapy the best fitting model according to the AIC value includes 3 DFs for the baseline hazard function whereas the best fitting model according to the BIC includes 2 DFs for the baseline hazard function.
+
+I hope this function might be of use for you and please let me know if you should have any feedback or suggestions for it.

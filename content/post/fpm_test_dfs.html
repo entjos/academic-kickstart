@@ -372,49 +372,50 @@ However, before discussing about the function, I would like to quickly
 introduce the generalised survival model modeled on the log cumulative
 hazard function (<span class="math inline">\(\ln H(t)\)</span>). In
 these models the baseline hazard function is modeled using a spline
-function of log time with knots <span class="math inline">\(\mathbf{k}_0\)</span> and parameters <span class="math inline">\(\gamma\)</span>:</p>
+function of log time with a vector of knots <span class="math inline">\(\mathbf{k}_0\)</span> and parameters <span class="math inline">\(\gamma\)</span>:</p>
 <p><span class="math display">\[
 \ln \{H(t|\mathbf{x})\} = s\{\ln(t)|\mathbf{\gamma}, \mathbf{k}_0\} +
 \mathbf{x}\mathbf{\beta}
 \]</span> where <span class="math inline">\(\mathbf{x}\)</span> and
-<span class="math inline">\(\mathbf{\beta}\)</span> are covariates and
-regression parameters, respectively. The number of knots and the DFs
-have a direct relationship depending on which type of spline function
-you use and which degree you use for the polynomial. The
-<code>rstpm2::stpm2()</code> function uses restricted cubic splines,
-which are natural splines in which the first and second order
-derivatives of the spline function at the knots are restricted to be
-equal:</p>
+<span class="math inline">\(\mathbf{\beta}\)</span> are vectors of
+covariates and regression parameters, respectively. The number of knots
+and the DFs have a direct relationship depending on which type of spline
+function and which polynomial you use. The <code>rstpm2::stpm2()</code>
+function uses restricted cubic splines, which are natural cubic splines
+in which the first and second order derivatives of the spline function
+at the knots are restricted to be equal:</p>
 <p><span class="math display">\[
 s\{\ln(t)|\mathbf{\gamma}, \mathbf{k}_0\} = \beta_{00} + \beta_{01}
 \ln(t) + \beta_{02} \ln(t) ^ 2 + \beta_{03} \ln(t) ^ 3 + \sum_{i = 1}^K
 \beta_{i3} (\ln(t) - k_i)^3_+
 \]</span></p>
-<p>The number of knots and DFs are related through <span class="math inline">\(K = \text{DF} - 1\)</span> for restricted cubic
-spline models.</p>
+<p>The number of knots and DFs for restricted cubic splines are related
+through <span class="math inline">\(K = \text{DF} - 1\)</span>.</p>
 <p>However, we cannot only use spline function for modelling the
 baseline hazard function, but also for modelling time-varying covariate
-effects. In that case the model can be generalised for including <span class="math inline">\(D\)</span> time-varying covariate effects:</p>
+effects. In this case the above model can be generalised for including
+<span class="math inline">\(D\)</span> time-varying covariate
+effects:</p>
 <p><span class="math display">\[
 \ln \{H(t|\mathbf{x})\} = s\{\ln(t)|\mathbf{\gamma}, \mathbf{k}_0\} +
 \sum_{j=1}^D s\{\ln(t)|\mathbf{\delta}_j, \mathbf{k}_j\} \mathbf{x}_j +
 \mathbf{x}\mathbf{\beta}
 \]</span> where <span class="math inline">\(\mathbf{\delta}_j\)</span>
-and <span class="math inline">\(\mathbf{k}_j\)</span> are the number of
+and <span class="math inline">\(\mathbf{k}_j\)</span> are the vectors of
 knots and parameters for the spline function of the time-varying effect
 of covariate <span class="math inline">\(x_j\)</span>.</p>
 <p>In the model above we need to specify a lot of different DFs one for
 the baseline hazard function and one for each time-varying covariate
-effect that we would like to include in this model. Finding the right
-combination of DFs for a model can be a challenging task as. A common
+effect that we would like to include in our model. Finding the right
+combination of DFs for a model can be a challenging task. A common
 approach is to fit models with different DFs and compare their AIC or
-BIC in order to identify the best fitting model. This is where
+BIC value in order to identify the best fitting model. This is where
 <code>fpm_test_dfs()</code> comes in handy. <code>fpm_test_dfs()</code>
 allows you to specify which DFs you would like to test for each spline
-function included in your model and returns to you a data frame
-including the corresponding AIC and BIC values for each possible
-combination of DFs.</p>
-<p>For this <code>fpm_test_dfs()</code> requires the following 5
+function included in your model and returns a data frame including the
+corresponding AIC and BIC values for each possible combination of
+DFs.</p>
+<p>For this, <code>fpm_test_dfs()</code> requires the following 5
 arguments:</p>
 <ul>
 <li><code>formula</code>: A formular describing the model that you would
@@ -432,7 +433,7 @@ variables that should be used for stratifying the model, if needed.</li>
 <code>rstpm2::stpm2()</code>.</li>
 </ul>
 <p>Let’s test the function using the breast cancer dataset included in
-the <code>rstpm2</code> package. For this we first need to load the
+the <code>rstpm2</code> package. For this, we first need to load the
 <code>rstpm2</code> package and install the <code>fpm_test_dfs()</code>
 function, which is included in the <code>entjosR</code> package on
 GitHub.</p>
@@ -454,8 +455,8 @@ for modelling the baseline hazard function. For this we can use the
 ten DFs for the baselien hazard function.</p>
 <pre class="r"><code># Test for best fitting baseline hazard function
 dfs_test_model1 &lt;- fpm_test_dfs(Surv(rectime, censrec) ~ 1,
-             dfs_bh  = 1:10,
-             data = brcancer)
+                                dfs_bh = 1:10,
+                                data   = brcancer)
 
 dfs_test_model1</code></pre>
 <pre><code>##    df_bh df_tvc      aic      bic
@@ -591,12 +592,14 @@ fpm_get_best_fit(dfs_test_model3)</code></pre>
 ## 3     3          1 1695.230 1716.262
 ## 2     2          1 1696.212 1713.739</code></pre>
 <p>The results shows that among those that did not receive hormonal
-therapy 2 DFs are sufficent for modelling the baseline hazard function
+therapy 2 DFs are sufficient for modelling the baseline hazard function
 according to both AIC and BIC. However, among those that did receive
 hormonal therapy the best fitting model according to the AIC value
 includes 3 DFs for the baseline hazard function whereas the best fitting
 model according to the BIC includes 2 DFs for the baseline hazard
 function.</p>
+<p>I hope this function might be of use for you and please let me know
+if you should have any feedback or suggestions for it.</p>
 
 
 
