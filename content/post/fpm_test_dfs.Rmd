@@ -1,11 +1,11 @@
 ---
 title: "Testing degrees of freedom for generalised survival models in R"
 author: "Joshua Philipp Entrop"
-date: "2023-12-19"
+date: "2024-10-01"
 output: html_document
 categories: [R]
-tags: [R, ExclusionTable]
-draft: TRUE
+tags: [R, survival analysis]
+draft: FALSE
 ---
 
 Have you ever encountered a situation in which you wanted to test different degrees of freedom (DF) for a generalised survival model? I encounter this situation quite frequently and after writing for loops for looping through the different combinations of DFs for different spline functions, I decided to write a R function that does this for me instead.
@@ -126,4 +126,4 @@ fpm_get_best_fit(dfs_test_model3)
 
 The results shows that among those that did not receive hormonal therapy 2 DFs are sufficient for modelling the baseline hazard function according to both AIC and BIC. However, among those that did receive hormonal therapy the best fitting model according to the AIC value includes 3 DFs for the baseline hazard function whereas the best fitting model according to the BIC includes 2 DFs for the baseline hazard function.
 
-I hope this function might be of use for you and please let me know if you should have any feedback or suggestions for it.
+I hope this function might be of use for you and please [let me know](mailto:joshuaentrop@posteo.de) if you should have any feedback or suggestions for it.
