@@ -5,7 +5,6 @@ date: "2024-01-10"
 output: html_document
 categories: [R]
 tags: [R, survival analysis]
-draft: FALSE
 ---
 
 Have you ever encountered a situation in which you wanted to test different degrees of freedom (DF) for a generalised survival model? I encounter this situation quite frequently and after writing for loops for looping through the different combinations of DFs for different spline functions, I decided to write a R function that does this for me instead.
